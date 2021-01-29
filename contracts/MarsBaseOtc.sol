@@ -152,6 +152,29 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         _deposit(_id, _token, msg.sender, _amount);
     }
 
+    function cancel(bytes32 _id)
+        external
+        override
+        nonReentrant
+        onlyOrderOwner(_id)
+        onlyWhenVaultDefined
+        onlyWhenOrderExists(_id)
+    {
+        require(!isCancelled[_id], "MarsBaseOtc: Already cancelled");
+        require(!isSwapped[_id], "MarsBaseOtc: Already swapped");
+
+        address[2] memory tokens = [baseAddresses[_id], quoteAddresses[_id]];
+        for (uint256 t = 0; t < tokens.length; t++) {
+            address token = tokens[t];
+            address user = investors[_id][token];
+            uint256 userInvestment = investments[_id][token][user];
+            vault.withdraw(token, user, userInvestment);
+        }
+
+        isCancelled[_id] = true;
+        emit OrderCancelled(_id);
+    }
+
     function setVault(Vault _vault) external onlyOwner {
         vault = _vault;
     }
@@ -165,6 +188,22 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         }
     }
 
+    function baseLimit(bytes32 _id) public view returns (uint256) {
+        return limits[_id][baseAddresses[_id]];
+    }
+
+    function quoteLimit(bytes32 _id) public view returns (uint256) {
+        return limits[_id][quoteAddresses[_id]];
+    }
+
+    function baseRaised(bytes32 _id) public view returns (uint256) {
+        return raised[_id][baseAddresses[_id]];
+    }
+
+    function quoteRaised(bytes32 _id) public view returns (uint256) {
+        return raised[_id][quoteAddresses[_id]];
+    }
+
     function isBaseFilled(bytes32 _id) public view returns (bool) {
         return
             raised[_id][baseAddresses[_id]] == limits[_id][baseAddresses[_id]];
@@ -174,6 +213,34 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         return
             raised[_id][quoteAddresses[_id]] ==
             limits[_id][quoteAddresses[_id]];
+    }
+
+    function baseInvestor(bytes32 _id) public view returns (address) {
+        return investors[_id][baseAddresses[_id]];
+    }
+
+    function quoteInvestor(bytes32 _id)
+        public
+        view
+        returns (address)
+    {
+        return investors[_id][quoteAddresses[_id]];
+    }
+
+    function baseUserInvestment(bytes32 _id, address _user)
+        public
+        view
+        returns (uint256)
+    {
+        return investments[_id][baseAddresses[_id]][_user];
+    }
+
+    function quoteUserInvestment(bytes32 _id, address _user)
+        public
+        view
+        returns (uint256)
+    {
+        return investments[_id][quoteAddresses[_id]][_user];
     }
 
     function _swap(bytes32 _id) internal {
