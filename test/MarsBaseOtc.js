@@ -4,6 +4,9 @@ const { expect, assert } = require("chai");
 const expectRevert = require("./utils/expectRevert.js");
 const helper = require("openzeppelin-test-helpers/src/time.js");
 const time = require("openzeppelin-test-helpers/src/time.js");
+const assertArrays = require('chai-arrays');
+const { web3 } = require("openzeppelin-test-helpers/src/setup");
+chai.use(assertArrays);
 chai.use(require("chai-bn")(BN));
 
 require('dotenv').config();
@@ -43,13 +46,15 @@ contract(
         VaultOwner,
         user1,
         user2,
-        orderOwner
+        user3
     ]) => {
         let VaultInst;
         let MarsBaseOtcInst;
 
         let TestTokenInst_1;
         let TestTokenInst_2;
+        let WhiteListTestTokenInst_1;
+        let WhiteListTestTokenInst_2;
 
         beforeEach(async () => {
             // Init contracts
@@ -80,6 +85,25 @@ contract(
                 DECIMALS,
                 {from: user2}
             );
+
+            WhiteListTestTokenInst_1 = await testToken.new(
+                "WL Name 1",
+                "WL Symbol 1",
+                TOTAL_SUPPLY,
+                DECIMALS,
+                {from: user1}
+            );
+
+            WhiteListTestTokenInst_2 = await testToken.new(
+                "WL Name 2",
+                "WL Symbol 2",
+                TOTAL_SUPPLY,
+                DECIMALS,
+                {from: user2}
+            );
+
+            await MarsBaseOtcInst.addWhiteList(WhiteListTestTokenInst_1.address);
+            await MarsBaseOtcInst.addWhiteList(WhiteListTestTokenInst_2.address);
         })
 
         it("#0 Deploy test", async () => {
@@ -88,134 +112,125 @@ contract(
 
             expect(await MarsBaseOtcInst.vault()).to.be.equals(VaultInst.address);
             expect(await MarsBaseOtcInst.owner()).to.be.equals(MarsBaseOtcOwner);
+            expect(await MarsBaseOtcInst.isAddressInWhiteList(WhiteListTestTokenInst_1.address)).to.be.equals(true);
+            expect(await MarsBaseOtcInst.isAddressInWhiteList(WhiteListTestTokenInst_2.address)).to.be.equals(true);
 
             expect(await TestTokenInst_1.name()).to.be.equals("Name 1");
             expect(await TestTokenInst_1.symbol()).to.be.equals("Symbol 1");
             expect(await TestTokenInst_1.decimals()).to.be.bignumber.that.equals(DECIMALS);
             expect(await TestTokenInst_1.totalSupply()).to.be.bignumber.that.equals(TOTAL_SUPPLY);
             expect(await TestTokenInst_1.balanceOf(user1)).to.be.bignumber.that.equals(TOTAL_SUPPLY);
-
-            expect(await TestTokenInst_2.name()).to.be.equals("Name 2");
-            expect(await TestTokenInst_2.symbol()).to.be.equals("Symbol 2");
-            expect(await TestTokenInst_2.decimals()).to.be.bignumber.that.equals(DECIMALS);
-            expect(await TestTokenInst_2.totalSupply()).to.be.bignumber.that.equals(TOTAL_SUPPLY);
-            expect(await TestTokenInst_2.balanceOf(user2)).to.be.bignumber.that.equals(TOTAL_SUPPLY);
         })
 
-        it("#1 Test order creation", async () => {
-            let key = await MarsBaseOtcInst.createKey(orderOwner);
+        it("#1 Test buy order creation", async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
 
             let amount1 = ONE_TOKEN.mul(new BN(10));
             let amount2 = ONE_TOKEN.mul(new BN(20));
             assert(amount1.lte(TOTAL_SUPPLY));
             assert(amount2.lte(TOTAL_SUPPLY));
 
-            await MarsBaseOtcInst.createOrder(
+            await MarsBaseOtcInst.createBuyOrder(
                 key,
-                TestTokenInst_1.address,
                 TestTokenInst_2.address,
                 amount1,
-                amount2,
-                {from: orderOwner}
+                ONE,
+                {from: user1}
             );
 
-            expect(await MarsBaseOtcInst.owners(key)).to.be.equals(orderOwner);
-            expect(await MarsBaseOtcInst.baseAddresses(key)).to.be.equals(TestTokenInst_1.address);
-            expect(await MarsBaseOtcInst.quoteAddresses(key)).to.be.equals(TestTokenInst_2.address);
-            expect(await MarsBaseOtcInst.limits(key, TestTokenInst_1.address)).to.be.bignumber.that.equals(amount1);
-            expect(await MarsBaseOtcInst.limits(key, TestTokenInst_2.address)).to.be.bignumber.that.equals(amount2);
+            expect(await MarsBaseOtcInst.orderType(key)).to.be.bignumber.that.equals(ONE);
+
+            expect((await MarsBaseOtcInst.buyOrders(key)).owner).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrders(key)).tokenToBuy).to.be.equals(TestTokenInst_2.address);
+            expect((await MarsBaseOtcInst.buyOrders(key)).amountOfTokensToBuy).to.be.bignumber.that.equals(amount1);
+            expect((await MarsBaseOtcInst.buyOrders(key)).discount).to.be.bignumber.that.equals(ONE);
+            expect((await MarsBaseOtcInst.buyOrders(key)).isCancelled).to.be.equals(false);
+            expect((await MarsBaseOtcInst.buyOrders(key)).isSwapped).to.be.equals(false);
+
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.buyOrdersOwnerBidLen(key)).to.be.bignumber.that.equals(ZERO);
 
             await helper.increase(TIME_DELTA_FOR_KEY);
-            let keyNow = await MarsBaseOtcInst.createKey(orderOwner);
+            let keyNow = await MarsBaseOtcInst.createKey(user1);
             assert(keyNow != key);
             key = keyNow;
 
-            await MarsBaseOtcInst.createOrder(
+            await MarsBaseOtcInst.createBuyOrder(
                 key,
                 ZERO_ADDRESS,
-                TestTokenInst_2.address,
                 amount1,
-                amount2,
-                {from: orderOwner}
+                ONE,
+                {from: user1}
             );
 
-            expect(await MarsBaseOtcInst.owners(key)).to.be.equals(orderOwner);
-            expect(await MarsBaseOtcInst.baseAddresses(key)).to.be.equals(ZERO_ADDRESS);
-            expect(await MarsBaseOtcInst.quoteAddresses(key)).to.be.equals(TestTokenInst_2.address);
-            expect(await MarsBaseOtcInst.limits(key, ZERO_ADDRESS)).to.be.bignumber.that.equals(amount1);
-            expect(await MarsBaseOtcInst.limits(key, TestTokenInst_2.address)).to.be.bignumber.that.equals(amount2);
+            expect(await MarsBaseOtcInst.orderType(key)).to.be.bignumber.that.equals(ONE);
+
+            expect((await MarsBaseOtcInst.buyOrders(key)).owner).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrders(key)).tokenToBuy).to.be.equals(ZERO_ADDRESS);
+            expect((await MarsBaseOtcInst.buyOrders(key)).amountOfTokensToBuy).to.be.bignumber.that.equals(amount1);
+            expect((await MarsBaseOtcInst.buyOrders(key)).discount).to.be.bignumber.that.equals(ONE);
+            expect((await MarsBaseOtcInst.buyOrders(key)).isCancelled).to.be.equals(false);
+            expect((await MarsBaseOtcInst.buyOrders(key)).isSwapped).to.be.equals(false);
+
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.buyOrdersOwnerBidLen(key)).to.be.bignumber.that.equals(ZERO);
         })
 
-        it("#2 Test exceptions in create orders", async () => {
-            let key = await MarsBaseOtcInst.createKey(orderOwner);
+        it("#2 Test exceptions in creating buy orders", async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
 
             let amount1 = ONE_TOKEN.mul(new BN(10));
             let amount2 = ONE_TOKEN.mul(new BN(20));
             assert(amount1.lte(TOTAL_SUPPLY));
             assert(amount2.lte(TOTAL_SUPPLY));
 
-            await MarsBaseOtcInst.createOrder(
+            await MarsBaseOtcInst.createBuyOrder(
                 key,
                 TestTokenInst_1.address,
-                TestTokenInst_2.address,
                 amount1,
-                amount2,
-                {from: orderOwner}
+                ONE,
+                {from: user1}
             );
             await expectRevert(
-                MarsBaseOtcInst.createOrder(
+                MarsBaseOtcInst.createBuyOrder(
                     key,
                     TestTokenInst_1.address,
-                    TestTokenInst_2.address,
                     amount1,
-                    amount2,
-                    {from: orderOwner}
+                    ONE,
+                    {from: user2}
                 ),
                 "MarsBaseOtc: Order already exists"
             );
 
             await helper.increase(TIME_DELTA_FOR_KEY);
-            let keyNow = await MarsBaseOtcInst.createKey(orderOwner);
+            let keyNow = await MarsBaseOtcInst.createKey(user1);
             assert(keyNow != key);
             key = keyNow;
 
             await expectRevert(
-                MarsBaseOtcInst.createOrder(
+                MarsBaseOtcInst.createBuyOrder(
                     key,
                     TestTokenInst_1.address,
-                    TestTokenInst_1.address,
-                    amount1,
-                    amount2,
-                    {from: orderOwner}
+                    ZERO,
+                    ONE,
+                    {from: user1}
                 ),
-                "MarsBaseOtc: Exchanged tokens must be different"
+                "MarsBaseOtc: Wrong amount to buy"
             );
             await expectRevert(
-                MarsBaseOtcInst.createOrder(
+                MarsBaseOtcInst.createBuyOrder(
                     key,
                     TestTokenInst_1.address,
-                    TestTokenInst_2.address,
-                    ZERO,
-                    amount2,
-                    {from: orderOwner}
-                ),
-                "MarsBaseOtc: Base limit must be positive"
-            );
-            await expectRevert(
-                MarsBaseOtcInst.createOrder(
-                    key,
-                    TestTokenInst_1.address,
-                    TestTokenInst_2.address,
                     amount1,
-                    ZERO,
-                    {from: orderOwner}
+                    new BN("1000"),
+                    {from: user1}
                 ),
-                "MarsBaseOtc: Quote limit must be positive"
+                "MarsBaseOtc: Wrong discount"
             );
         })
 
-        it("#3 Test deposit into ERC20/ERC20", async () => {
-            let key = await MarsBaseOtcInst.createKey(orderOwner);
+        it("#3 Test deposit into buy order", async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
 
             let amount1 = ONE_TOKEN.mul(new BN(10));
             let amount2 = ONE_TOKEN.mul(new BN(20));
@@ -223,50 +238,186 @@ contract(
             assert(amount2.lte(TOTAL_SUPPLY));
 
             expect(await TestTokenInst_1.balanceOf(user2)).to.be.bignumber.that.equals(ZERO);
+            expect(await WhiteListTestTokenInst_1.balanceOf(user2)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(user1)).to.be.bignumber.that.equals(ZERO);
+            expect(await WhiteListTestTokenInst_2.balanceOf(user1)).to.be.bignumber.that.equals(ZERO);
 
-            await MarsBaseOtcInst.createOrder(
+            await MarsBaseOtcInst.createBuyOrder(
                 key,
-                TestTokenInst_1.address,
                 TestTokenInst_2.address,
-                amount1,
                 amount2,
-                {from: orderOwner}
+                ZERO,
+                {from: user1}
             );
 
-            await TestTokenInst_1.approve(
+            // first donation of WhiteListTestTokenInst_1
+            await WhiteListTestTokenInst_1.approve(
                 MarsBaseOtcInst.address,
                 amount1,
                 {from: user1}
             );
-            let user1Token1AmountBefore = new BN(await TestTokenInst_1.balanceOf(user1));
-            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
-            await MarsBaseOtcInst.deposit(
+            let user1Token1AmountBefore = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            await MarsBaseOtcInst.buyOrderDeposit(
                 key,
-                TestTokenInst_1.address,
+                WhiteListTestTokenInst_1.address,
                 amount1,
                 {from: user1}
             );
 
-            let user1Token1AmountAfter = new BN(await TestTokenInst_1.balanceOf(user1));
-            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).tokens)).to.be.eql(JSON.stringify([WhiteListTestTokenInst_1.address]));
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).amount)).to.be.eql(JSON.stringify([amount1]));
+
+            let user1Token1AmountAfter = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
             expect(user1Token1AmountBefore.sub(user1Token1AmountAfter)).to.be.bignumber.that.equals(amount1);
 
-            expect(await MarsBaseOtcInst.investors(key, TestTokenInst_1.address)).to.be.equals(user1);
-            expect(await MarsBaseOtcInst.investments(key, TestTokenInst_1.address, user1)).to.be.bignumber.that.equals(amount1);
-            expect(await MarsBaseOtcInst.raised(key, TestTokenInst_1.address)).to.be.bignumber.that.equals(amount1);
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.buyOrdersOwnerBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(amount1);
 
-            let firstDeposit = amount2.div(TWO);
-            let secondDeposit = amount2;
+            // first donation of WhiteListTestTokenInst_2
+            await WhiteListTestTokenInst_2.transfer(user1, amount1, {from: user2});
+            await WhiteListTestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                {from: user1}
+            );
+            let user1Token2AmountBefore = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            await MarsBaseOtcInst.buyOrderDeposit(
+                key,
+                WhiteListTestTokenInst_2.address,
+                amount1,
+                {from: user1}
+            );
+
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).tokens)).to.be.equals(JSON.stringify([
+                WhiteListTestTokenInst_1.address,
+                WhiteListTestTokenInst_2.address
+            ]));
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).amount)).to.be.equals(JSON.stringify([
+                amount1,
+                amount1
+            ]));
+
+            let user1Token2AmountAfter = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(user1Token2AmountBefore.sub(user1Token2AmountAfter)).to.be.bignumber.that.equals(amount1);
+
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.buyOrdersOwnerBidLen(key)).to.be.bignumber.that.equals(TWO);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).investedToken).to.be.equals(WhiteListTestTokenInst_2.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            // second donation of WhiteListTestTokenInst_1
+            user1Token1AmountBefore = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                {from: user1}
+            );
+            await MarsBaseOtcInst.buyOrderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount1,
+                {from: user1}
+            );
+
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).tokens)).to.be.equals(JSON.stringify([
+                WhiteListTestTokenInst_1.address,
+                WhiteListTestTokenInst_2.address
+            ]));
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).amount)).to.be.equals(JSON.stringify([
+                amount1.mul(TWO),
+                amount1
+            ]));
+
+            user1Token1AmountAfter = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.mul(TWO));
+            expect(user1Token1AmountBefore.sub(user1Token1AmountAfter)).to.be.bignumber.that.equals(amount1);
+
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.buyOrdersOwnerBidLen(key)).to.be.bignumber.that.equals(THREE);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).investedToken).to.be.equals(WhiteListTestTokenInst_2.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, TWO)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, TWO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, TWO)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            // first donation of ETH
+            await MarsBaseOtcInst.addWhiteList(ZERO_ADDRESS, {from: MarsBaseOtcOwner});
+            let user1EthAmountBefore = new BN(await web3.eth.getBalance(user1));
+            expect(new BN(await web3.eth.getBalance(VaultInst.address))).to.be.bignumber.that.equals(ZERO);
+            await MarsBaseOtcInst.buyOrderDeposit(
+                key,
+                ZERO_ADDRESS,
+                ONE_ETH,
+                {from: user1, value: ONE_ETH, gasPrice: ZERO}
+            );
+
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).tokens)).to.be.equals(JSON.stringify([
+                WhiteListTestTokenInst_1.address,
+                WhiteListTestTokenInst_2.address,
+                ZERO_ADDRESS
+            ]));
+            expect(JSON.stringify((await MarsBaseOtcInst.getOrderOwnerInvestments(key)).amount)).to.be.equals(JSON.stringify([
+                amount1.mul(TWO),
+                amount1,
+                ONE_ETH
+            ]));
+
+            let user1EthAmountAfter = new BN(await web3.eth.getBalance(user1));
+            expect(new BN(await web3.eth.getBalance(VaultInst.address))).to.be.bignumber.that.equals(ONE_ETH);
+            expect(user1EthAmountBefore.sub(user1EthAmountAfter)).to.be.bignumber.that.equals(ONE_ETH);
+
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.buyOrdersOwnerBidLen(key)).to.be.bignumber.that.equals(FOUR);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).investedToken).to.be.equals(WhiteListTestTokenInst_2.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, ONE)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, TWO)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, TWO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, TWO)).amountInvested).to.be.bignumber.that.equals(amount1);
+
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, THREE)).investor).to.be.equals(user1);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, THREE)).investedToken).to.be.equals(ZERO_ADDRESS);
+            expect((await MarsBaseOtcInst.buyOrdersOwnerBid(key, THREE)).amountInvested).to.be.bignumber.that.equals(ONE_ETH);
+
+            // first user2 deposit of TestTokenInst_2
+            let firstDeposit = amount2.div(THREE);
+            let secondDeposit = amount2.sub(firstDeposit);
             assert(firstDeposit.add(secondDeposit).lte(TOTAL_SUPPLY));
             await TestTokenInst_2.approve(
                 MarsBaseOtcInst.address,
-                firstDeposit.add(secondDeposit),
+                amount2,
                 {from: user2}
             );
             let user2Token1AmountBefore = new BN(await TestTokenInst_2.balanceOf(user2));
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
-            await MarsBaseOtcInst.deposit(
+            await MarsBaseOtcInst.buyOrderDeposit(
                 key,
                 TestTokenInst_2.address,
                 firstDeposit,
@@ -275,7 +426,18 @@ contract(
             let user2Token1AmountAfter = new BN(await TestTokenInst_2.balanceOf(user2));
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(firstDeposit);
             expect(user2Token1AmountBefore.sub(user2Token1AmountAfter)).to.be.bignumber.that.equals(firstDeposit);
-            await MarsBaseOtcInst.deposit(
+
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ZERO)).investor).to.be.equals(user2);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ZERO)).investedToken).to.be.equals(TestTokenInst_2.address);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(firstDeposit);
+
+            expect(JSON.stringify(await MarsBaseOtcInst.getInvestors(key))).to.be.equals(JSON.stringify([
+                user2
+            ]));
+
+            // second user2 deposit of TestTokenInst_2
+            await MarsBaseOtcInst.buyOrderDeposit(
                 key,
                 TestTokenInst_2.address,
                 secondDeposit,
@@ -283,18 +445,60 @@ contract(
             );
 
             user2Token1AmountAfter = new BN(await TestTokenInst_2.balanceOf(user2));
-            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2);
             expect(user2Token1AmountBefore.sub(user2Token1AmountAfter)).to.be.bignumber.that.equals(amount2);
 
-            expect(await MarsBaseOtcInst.investors(key, TestTokenInst_2.address)).to.be.equals(user2);
-            expect(await MarsBaseOtcInst.investments(key, TestTokenInst_2.address, user2)).to.be.bignumber.that.equals(amount2);
-            expect(await MarsBaseOtcInst.raised(key, TestTokenInst_2.address)).to.be.bignumber.that.equals(amount2);
+            expect(await MarsBaseOtcInst.buyOrdersBidLen(key)).to.be.bignumber.that.equals(TWO);
 
-            expect(await TestTokenInst_1.balanceOf(user2)).to.be.bignumber.that.equals(amount1);
-            expect(await TestTokenInst_2.balanceOf(user1)).to.be.bignumber.that.equals(amount2);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ZERO)).investor).to.be.equals(user2);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ZERO)).investedToken).to.be.equals(TestTokenInst_2.address);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(firstDeposit);
+
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ONE)).investor).to.be.equals(user2);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ONE)).investedToken).to.be.equals(TestTokenInst_2.address);
+            expect((await MarsBaseOtcInst.buyOrdersBid(key, ONE)).amountInvested).to.be.bignumber.that.equals(secondDeposit);
+
+            expect(JSON.stringify(await MarsBaseOtcInst.getInvestors(key))).to.be.equals(JSON.stringify([
+                user2
+            ]));
+
+            await TestTokenInst_2.transfer(user3, amount2, {from: user2});
+            await TestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                {from: user3}
+            );
+            await MarsBaseOtcInst.buyOrderDeposit(
+                key,
+                TestTokenInst_2.address,
+                amount2,
+                {from: user3}
+            );
+
+            expect(JSON.stringify(await MarsBaseOtcInst.getInvestors(key))).to.be.equals(JSON.stringify([
+                user2,
+                user3
+            ]));
+
+            await TestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                {from: user2}
+            );
+            await MarsBaseOtcInst.buyOrderDeposit(
+                key,
+                TestTokenInst_2.address,
+                amount2,
+                {from: user2}
+            );
+
+            expect(JSON.stringify(await MarsBaseOtcInst.getInvestors(key))).to.be.equals(JSON.stringify([
+                user2,
+                user3
+            ]));
         })
 
-        it("#4 Test deposit into ETH/ERC20", async () => {
+        /* it("#4 Test deposit into ETH/ERC20", async () => {
             let key = await MarsBaseOtcInst.createKey(orderOwner);
 
             let ethBalanceUser1BeforeOrder = new BN(await web3.eth.getBalance(user1));
@@ -563,7 +767,7 @@ contract(
 
             expect(await TestTokenInst_1.balanceOf(user1)).to.be.bignumber.that.equals(TOTAL_SUPPLY);
             expect(await TestTokenInst_2.balanceOf(user2)).to.be.bignumber.that.equals(TOTAL_SUPPLY);
-        })
+        }) */
 
     }
 )

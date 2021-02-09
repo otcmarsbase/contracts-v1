@@ -17,4 +17,9 @@ contract testToken is ERC20
         _setupDecimals(decimals);
         _mint(msg.sender, totalSupply);
     }
+
+    function mint(uint256 amount) external
+    {
+        _mint(msg.sender, amount);
+    }
 }

@@ -12,75 +12,96 @@ import "./Vault.sol";
 
 contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
     using SafeMath for uint256;
+    using SafeMath for uint16;
+    using SafeMath for uint8;
 
     Vault public vault;
-    //     id          owner
-    mapping(bytes32 => address) public owners;
-    //     id          baseAddr
-    mapping(bytes32 => address) public baseAddresses;
-    //     id          quoteAddr
-    mapping(bytes32 => address) public quoteAddresses;
-    //     id          swapped?
-    mapping(bytes32 => bool) public isSwapped;
-    //     id          cancelled?
-    mapping(bytes32 => bool) public isCancelled;
-    //      id                base/quote  limit
-    mapping(bytes32 => mapping(address => uint256)) public limits;
-    //      id                base/quote  raised
-    mapping(bytes32 => mapping(address => uint256)) public raised;
-    //      id                base/quote  investors
-    mapping(bytes32 => mapping(address => address)) public investors;
-    //      id                base/quote         investor    amount
-    mapping(bytes32 => mapping(address => mapping(address => uint256)))
-        public investments;
 
-    modifier onlyInvestor(bytes32 _id, address _token) {
+    struct BuyOrderInfo{
+        address owner;
+        address tokenToBuy;
+        uint256 amountOfTokensToBuy;
+        uint16 discount; // 10 is 1%, max value 1'000
+        bool isCancelled;
+        bool isSwapped;
+    }
+    struct BuyOrdersBidInfo{
+        address investor;
+        address investedToken;
+        uint256 amountInvested;
+    }
+    enum OrderTypeInfo {error, buyType, sellType}
+
+
+    // public mappings
+    // White list of liquidity tokens
+    mapping(address => bool) public isAddressInWhiteList;
+    // Info about bids
+    mapping(bytes32 => OrderTypeInfo) public orderType;
+    mapping(bytes32 => BuyOrderInfo) public buyOrders;
+    mapping(bytes32 => BuyOrdersBidInfo[]) public buyOrdersBid;
+    mapping(bytes32 => BuyOrdersBidInfo[]) public buyOrdersOwnerBid;
+
+    // modifiers
+    modifier onlyWhenVaultDefined() {
         require(
-            _isInvestor(_id, _token, msg.sender),
-            "MarsBaseOtc: Allowed only for investors"
+            address(vault) != address(0),
+            "MarsBaseOtc: Vault is not defined"
+        );
+        _;
+    }
+    modifier onlyOrderOwner(bytes32 _id) {
+        require(
+            msg.sender == buyOrders[_id].owner,
+            "MarsBaseOtc: Allowed only for owner"
+        );
+        _;
+    }
+    modifier onlyWhenOrderExists(bytes32 _id) {
+        require(
+            buyOrders[_id].owner != address(0),
+            "MarsBaseOtc: Order doesn't exist"
+        );
+        _;
+    }
+    modifier onlyBuyOrder(bytes32 _id) {
+        require(
+            orderType[_id] == OrderTypeInfo.buyType,
+            "MarsBaseOtc: This order is not buy type"
+        );
+        _;
+    }
+    modifier onlySellOrder(bytes32 _id) {
+        require(
+            orderType[_id] == OrderTypeInfo.sellType,
+            "MarsBaseOtc: This order is not buy type"
+        );
+        _;
+    }
+    modifier onlyWhiteListAddress(address arg){
+        require(
+            isAddressInWhiteList[arg] == true,
+            "MarsBaseOtc: Address is not in whiteList"
         );
         _;
     }
 
-    modifier onlyWhenVaultDefined() {
-        require(address(vault) != address(0), "MarsBaseOtc: Vault is not defined");
-        _;
-    }
-
-    modifier onlyOrderOwner(bytes32 _id) {
-        require(msg.sender == owners[_id], "MarsBaseOtc: Allowed only for owner");
-        _;
-    }
-
-    modifier onlyWhenOrderExists(bytes32 _id) {
-        require(owners[_id] != address(0), "MarsBaseOtc: Order doesn't exist");
-        _;
-    }
-
-    event OrderCreated(
+    event BuyOrderCreated(
         bytes32 id,
         address owner,
-        address baseAddress,
-        address quoteAddress,
-        uint256 baseLimit,
-        uint256 quoteLimit
+        address tokenToBuy,
+        uint256 amountOfTokensToBuy,
+        uint16 discount
+    );
+
+    event BuyOrderDeposit(
+        bytes32 _id,
+        address _token,
+        address _from,
+        uint256 _amount
     );
 
     event OrderCancelled(bytes32 id);
-
-    event Deposit(
-        bytes32 id,
-        address token,
-        address user,
-        uint256 amount,
-        uint256 balance
-    );
-
-    event Refund(bytes32 id, address token, address user, uint256 amount);
-
-    event OrderSwapped(bytes32 id, address byUser);
-
-    event SwapSend(bytes32 id, address token, address user, uint256 amount);
 
     constructor() {}
 
@@ -90,38 +111,47 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         bytes calldata
     ) external {}
 
-    function createOrder(
+    function createBuyOrder(
         bytes32 _id,
-        address _baseAddress,
-        address _quoteAddress,
-        uint256 _baseLimit,
-        uint256 _quoteLimit
-    ) external override nonReentrant onlyWhenVaultDefined {
-        require(owners[_id] == address(0), "MarsBaseOtc: Order already exists");
+        address _tokenToBuy,
+        uint256 _amountOfTokensToBuy,
+        uint16 _discount
+    )
+        external
+        override
+        nonReentrant
+        onlyWhenVaultDefined
+    {
         require(
-            _baseAddress != _quoteAddress,
-            "MarsBaseOtc: Exchanged tokens must be different"
+            buyOrders[_id].owner == address(0),
+            "MarsBaseOtc: Order already exists"
         );
-        require(_baseLimit > 0, "MarsBaseOtc: Base limit must be positive");
-        require(_quoteLimit > 0, "MarsBaseOtc: Quote limit must be positive");
+        require(
+            _amountOfTokensToBuy > 0,
+            "MarsBaseOtc: Wrong amount to buy"
+        );
+        require(
+            _discount < 1000,
+            "MarsBaseOtc: Wrong discount"
+        );
 
-        owners[_id] = msg.sender;
-        baseAddresses[_id] = _baseAddress;
-        quoteAddresses[_id] = _quoteAddress;
-        limits[_id][_baseAddress] = _baseLimit;
-        limits[_id][_quoteAddress] = _quoteLimit;
+        buyOrders[_id].owner = msg.sender;
+        buyOrders[_id].tokenToBuy = _tokenToBuy;
+        buyOrders[_id].amountOfTokensToBuy = _amountOfTokensToBuy;
+        buyOrders[_id].discount = _discount;
 
-        emit OrderCreated(
+        orderType[_id] = OrderTypeInfo.buyType;
+
+        emit BuyOrderCreated(
             _id,
             msg.sender,
-            _baseAddress,
-            _quoteAddress,
-            _baseLimit,
-            _quoteLimit
+            _tokenToBuy,
+            _amountOfTokensToBuy,
+            _discount
         );
     }
 
-    function deposit(
+    function buyOrderDeposit(
         bytes32 _id,
         address _token,
         uint256 _amount
@@ -132,6 +162,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         nonReentrant
         onlyWhenVaultDefined
         onlyWhenOrderExists(_id)
+        onlyBuyOrder(_id)
     {
         if (_token == address(0)) {
             require(
@@ -149,10 +180,10 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
             );
             IERC20(_token).transferFrom(msg.sender, address(vault), _amount);
         }
-        _deposit(_id, _token, msg.sender, _amount);
+        _buyOrderDeposit(_id, _token, msg.sender, _amount);
     }
 
-    function cancel(bytes32 _id)
+    /* function cancel(bytes32 _id)
         external
         override
         nonReentrant
@@ -173,12 +204,21 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
 
         isCancelled[_id] = true;
         emit OrderCancelled(_id);
-    }
+    } */
 
     function setVault(Vault _vault) external onlyOwner {
         vault = _vault;
     }
 
+    function addWhiteList(address newToken) external {
+        isAddressInWhiteList[newToken] = true;
+    }
+
+    function deleteFromWhiteList(address tokenToDelete) external {
+        isAddressInWhiteList[tokenToDelete] = false;
+    }
+
+    // view functions
     function createKey(address _owner) public view returns (bytes32 result) {
         uint256 creationTime = block.timestamp;
         result = 0x0000000000000000000000000000000000000000000000000000000000000000;
@@ -188,140 +228,173 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         }
     }
 
-    function baseLimit(bytes32 _id) public view returns (uint256) {
-        return limits[_id][baseAddresses[_id]];
+    function buyOrdersBidLen(bytes32 id) external view returns(uint256) {
+        return buyOrdersBid[id].length;
     }
 
-    function quoteLimit(bytes32 _id) public view returns (uint256) {
-        return limits[_id][quoteAddresses[_id]];
+    function buyOrdersOwnerBidLen(bytes32 id) external view returns(uint256) {
+        return buyOrdersOwnerBid[id].length;
     }
 
-    function baseRaised(bytes32 _id) public view returns (uint256) {
-        return raised[_id][baseAddresses[_id]];
-    }
-
-    function quoteRaised(bytes32 _id) public view returns (uint256) {
-        return raised[_id][quoteAddresses[_id]];
-    }
-
-    function isBaseFilled(bytes32 _id) public view returns (bool) {
-        return
-            raised[_id][baseAddresses[_id]] == limits[_id][baseAddresses[_id]];
-    }
-
-    function isQuoteFilled(bytes32 _id) public view returns (bool) {
-        return
-            raised[_id][quoteAddresses[_id]] ==
-            limits[_id][quoteAddresses[_id]];
-    }
-
-    function baseInvestor(bytes32 _id) public view returns (address) {
-        return investors[_id][baseAddresses[_id]];
-    }
-
-    function quoteInvestor(bytes32 _id)
-        public
+    function getOrderOwnerInvestments(
+        bytes32 id
+    )
+        external
         view
-        returns (address)
+        returns(
+            address[] memory tokens,
+            uint256[] memory amount
+        )
     {
-        return investors[_id][quoteAddresses[_id]];
+        return _getUserInvestments(buyOrdersOwnerBid[id], buyOrders[id].owner);
     }
 
-    function baseUserInvestment(bytes32 _id, address _user)
-        public
+    function getOrderUserInvestments(
+        bytes32 id,
+        address user
+    )
+        external
         view
-        returns (uint256)
+        returns(
+            address[] memory tokens,
+            uint256[] memory amount
+        )
     {
-        return investments[_id][baseAddresses[_id]][_user];
+        return _getUserInvestments(buyOrdersBid[id], user);
     }
 
-    function quoteUserInvestment(bytes32 _id, address _user)
-        public
+    function getInvestors(
+        bytes32 id
+    )
+        external
         view
-        returns (uint256)
+        returns(
+            address[] memory investors
+        )
     {
-        return investments[_id][quoteAddresses[_id]][_user];
+        BuyOrdersBidInfo[] storage bids = buyOrdersBid[id];
+        uint256 len = bids.length;
+        investors = new address[](len);
+        uint256 count = 0;
+        for(uint256 i = 0; i < len; i = i.add(1))
+        {
+            uint256 ind = _findAddress(investors, bids[i].investor, count);
+            if (ind == count)
+            {
+                investors[count] = bids[i].investor;
+                count = count.add(1);
+            }
+            else if (ind > count)
+                revert("MarsBaseOtc: Internal error getInvestors");
+        }
+        uint256 delta = len.sub(count);
+        if (delta > 0)
+        {
+            // decrease len of arrays tokens and amount
+            // https://ethereum.stackexchange.com/questions/51891/how-to-pop-from-decrease-the-length-of-a-memory-array-in-solidity
+            assembly { mstore(investors, sub(mload(investors), delta)) }
+        }
     }
 
-    function _swap(bytes32 _id) internal {
-        require(!isSwapped[_id], "MarsBaseOtc: Already swapped");
-        require(!isCancelled[_id], "MarsBaseOtc: Already cancelled");
-        require(isBaseFilled(_id), "MarsBaseOtc: Base tokens not filled");
-        require(isQuoteFilled(_id), "MarsBaseOtc: Quote tokens not filled");
-
-        _distribute(_id, baseAddresses[_id], quoteAddresses[_id]);
-        _distribute(_id, quoteAddresses[_id], baseAddresses[_id]);
-
-        isSwapped[_id] = true;
-        emit OrderSwapped(_id, msg.sender);
-    }
-
-    function _distribute(
-        bytes32 _id,
-        address _aSide,
-        address _bSide
-    ) internal {
-        uint256 toPayInvestor = raised[_id][_bSide];
-        address user = investors[_id][_aSide];
-        vault.withdraw(_bSide, user, toPayInvestor);
-
-        emit SwapSend(_id, _bSide, user, toPayInvestor);
-    }
-
-    function _deposit(
+    // private functions
+    function _buyOrderDeposit(
         bytes32 _id,
         address _token,
         address _from,
         uint256 _amount
-    ) internal {
-        uint256 amount = _amount;
-        require(
-            baseAddresses[_id] == _token || quoteAddresses[_id] == _token,
-            "MarsBaseOtc: You can deposit only base or quote currency"
-        );
-        require(
-            raised[_id][_token] < limits[_id][_token],
-            "MarsBaseOtc: Limit already reached"
-        );
+    )
+        private
+    {
+        BuyOrdersBidInfo memory ownersBid = BuyOrdersBidInfo({
+            investor: _from,
+            investedToken: _token,
+            amountInvested: _amount
+        });
 
-        if (!_isInvestor(_id, _token, _from)) {
+        if (_from == buyOrders[_id].owner)
+        {
             require(
-                investors[_id][_token] == address(0),
-                "MarsBaseOtc: There is already investor in this order"
+                isAddressInWhiteList[_token] == true,
+                "MarsBaseOtc: Token is not in the white list"
             );
-            investors[_id][_token] = _from;
+            buyOrdersOwnerBid[_id].push(ownersBid);
+        }
+        else
+        {
+            require(
+                _token == buyOrders[_id].tokenToBuy,
+                "MarsBaseOtc: Wrong token"
+            );
+            buyOrdersBid[_id].push(ownersBid);
         }
 
-        uint256 raisedWithOverflow = raised[_id][_token].add(amount);
-        if (raisedWithOverflow > limits[_id][_token]) {
-            uint256 overflow = raisedWithOverflow.sub(limits[_id][_token]);
-            vault.withdraw(_token, _from, overflow);
-            amount = amount.sub(overflow);
-        }
-
-        investments[_id][_token][_from] = investments[_id][_token][_from].add(
-            amount
-        );
-
-        raised[_id][_token] = raised[_id][_token].add(amount);
-        emit Deposit(
+        emit BuyOrderDeposit(
             _id,
             _token,
             _from,
-            amount,
-            investments[_id][_token][_from]
+            _amount
         );
+    }
 
-        if (isBaseFilled(_id) && isQuoteFilled(_id)) {
-            _swap(_id);
+    function _getUserInvestments(
+        BuyOrdersBidInfo[] storage bids,
+        address user
+    )
+        private
+        view
+        returns(
+            address[] memory tokens,
+            uint256[] memory amount
+        )
+    {
+        uint256 len = bids.length;
+        tokens = new address[](len);
+        amount = new uint256[](len);
+        uint256 count = 0;
+        for(uint256 i = 0; i < len; i = i.add(1))
+        {
+            if (bids[i].investor == user)
+            {
+                uint256 ind = _findAddress(tokens, bids[i].investedToken, count);
+                if (ind < count)
+                {
+                    amount[ind] = amount[ind].add(bids[i].amountInvested);
+                }
+                else
+                {
+                    tokens[count] = bids[i].investedToken;
+                    amount[count] = bids[i].amountInvested;
+                    count = count.add(1);
+                }
+            }
+        }
+        uint256 delta = len.sub(count);
+        if (delta > 0)
+        {
+            // decrease len of arrays tokens and amount
+            // https://ethereum.stackexchange.com/questions/51891/how-to-pop-from-decrease-the-length-of-a-memory-array-in-solidity
+            assembly { mstore(tokens, sub(mload(tokens), delta)) }
+            assembly { mstore(amount, sub(mload(amount), delta)) }
         }
     }
 
-    function _isInvestor(
-        bytes32 _id,
-        address _token,
-        address _who
-    ) internal view returns (bool) {
-        return investments[_id][_token][_who] > 0;
+    function _findAddress(
+        address[] memory array,
+        address toFind,
+        uint256 len
+    )
+        private
+        pure
+        returns (uint256 i)
+    {
+        require(
+            array.length >= len,
+            "MarsBaseOtc: Wrong len argument"
+        );
+        for(i = 0; i < len; i = i.add(1))
+        {
+            if (array[i] == toFind)
+                return i;
+        }
     }
 }
