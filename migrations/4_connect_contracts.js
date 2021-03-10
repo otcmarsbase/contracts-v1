@@ -25,4 +25,7 @@ module.exports = async function (deployer, network) {
     await MarsBaseOtcInst.transferOwnership(MARS_BASE_OTC_OWNER);
 
     console.log("Contracts connected");
+
+    console.log("Vault address =", VaultInst.address);
+    console.log("MarsBaseOtc address =", MarsBaseOtcInst.address);
 };

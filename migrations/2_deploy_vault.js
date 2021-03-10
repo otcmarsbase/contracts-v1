@@ -16,5 +16,5 @@ module.exports = async function (deployer, network) {
         Vault
     );
     let VaultInst = await Vault.deployed();
-    console.log("Vault address = ", VaultInst.address);
+    console.log("Vault address =", VaultInst.address);
 };

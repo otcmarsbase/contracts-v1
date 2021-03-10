@@ -16,5 +16,5 @@ module.exports = async function (deployer, network) {
         MarsBaseOtc
     );
     let MarsBaseOtcInst = await MarsBaseOtc.deployed();
-    console.log("MarsBaseOtc address = ", MarsBaseOtcInst.address);
+    console.log("MarsBaseOtc address =", MarsBaseOtcInst.address);
 };
