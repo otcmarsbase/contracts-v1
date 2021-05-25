@@ -34,21 +34,21 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
     modifier onlyWhenVaultDefined() {
         require(
             address(vault) != address(0),
-            "MarsBaseOtc: Vault is not defined"
+            "101"
         );
         _;
     }
     modifier onlyWhenOrderExists(bytes32 _id) {
         require(
             orders[_id].owner != address(0),
-            "MarsBaseOtc: Order doesn't exist"
+            "102"
         );
         _;
     }
     modifier onlyOrderOwner(bytes32 _id) {
         require(
             orders[_id].owner == _msgSender(),
-            "MarsBaseOtc: Caller is not order owner"
+            "103"
         );
         _;
     }
@@ -105,17 +105,17 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
     ) external override nonReentrant onlyWhenVaultDefined {
         require(
             orders[_id].owner == address(0),
-            "MarsBaseOtc: Order already exists"
+            "201"
         );
-        require(_amountOfToken > 0, "MarsBaseOtc: Wrong amount");
-        require(_discount < 1000, "MarsBaseOtc: Wrong discount");
+        require(_amountOfToken > 0, "202");
+        require(_discount < 1000, "203");
         require(
             typeOrder != OrderTypeInfo.error,
-            "MarsBaseOtc: Wrong type order"
+            "204"
         );
         require(
             _expirationDate > block.timestamp,
-            "MarsBaseOtc: Wrong expiration date"
+            "205"
         );
 
         orders[_id].owner = msg.sender;
@@ -129,7 +129,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         if (_ownerBroker != address(0)) {
             require(
                 _ownerBrokerPerc > 0 && _ownerBrokerPerc < BROKERS_DENOMINATOR,
-                "MarsBaseOtc: Wrong ownerBrokerPerc"
+                "206"
             );
             ownerBroker[_id].broker = _ownerBroker;
             ownerBroker[_id].percents = _ownerBrokerPerc;
@@ -138,7 +138,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         if (_usersBroker != address(0)) {
             require(
                 _usersBrokerPerc > 0 && _usersBrokerPerc < BROKERS_DENOMINATOR,
-                "MarsBaseOtc: Wrong usersBrokerPerc"
+                "207"
             );
             usersBroker[_id].broker = _usersBroker;
             usersBroker[_id].percents = _usersBrokerPerc;
@@ -169,22 +169,30 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         onlyWhenOrderExists(_id)
     {
         require(
+            orders[_id].isCancelled == false,
+            "301"
+        );
+        require(
+            orders[_id].isSwapped == false,
+            "302"
+        );
+        require(
             block.timestamp <= orders[_id].expirationDate,
-            "MarsBaseOtc: Order expired"
+            "303"
         );
         if (_token == address(0)) {
             require(
                 msg.value == _amount,
-                "MarsBaseOtc: Payable value should be equals value"
+                "304"
             );
             address(vault).transfer(msg.value);
         } else {
-            require(msg.value == 0, "MarsBaseOtc: Payable not allowed here");
+            require(msg.value == 0, "305");
             uint256 allowance =
                 IERC20(_token).allowance(msg.sender, address(this));
             require(
                 _amount <= allowance,
-                "MarsBaseOtc: Allowance should be not less than amount"
+                "306"
             );
             require(
                 IERC20(_token).transferFrom(
@@ -192,7 +200,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
                     address(vault),
                     _amount
                 ),
-                "MarsBaseOtc: Transfer to contract failed"
+                "307"
             );
         }
         if (orders[_id].orderType == OrderTypeInfo.buyType)
@@ -210,17 +218,17 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
     {
         require(
             orders[_id].isCancelled == false,
-            "MarsBaseOtc: Order is already cancelled"
+            "401"
         );
         require(
             orders[_id].isSwapped == false,
-            "MarsBaseOtc: Order is already swapped"
+            "402"
         );
 
         address caller = _msgSender();
         require(
             caller == orders[_id].owner || caller == owner(),
-            "MarsBaseOtc: Caller is not admin or owner of order"
+            "403"
         );
 
         _cancel(_id);
@@ -240,18 +248,18 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         orders[_id].isSwapped = true;
         require(
             order.isCancelled == false,
-            "MarsBaseOtc: Order is already cancelled"
+            "501"
         );
         require(
             order.isSwapped == false,
-            "MarsBaseOtc: Order is already swapped"
+            "502"
         );
-        require(order.isManual == false, "MarsBaseOtc: Order is not automatic");
+        require(order.isManual == false, "503");
         require(
             block.timestamp <= order.expirationDate,
-            "MarsBaseOtc: Order expired"
+            "504"
         );
-        require(distribution.length > 0, "MarsBaseOtc: Wrong inputs");
+        require(distribution.length > 0, "505");
 
         address[] memory ownerTokensInvested;
         uint256[] memory ownerAmountsInvested;
@@ -267,11 +275,11 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         );
         require(
             usersTokensInvested.length > 0,
-            "MarsBaseOtc: This order has no user bids"
+            "506"
         );
         require(
             ownerTokensInvested.length > 0,
-            "MarsBaseOtc: This order has no owner bids"
+            "507"
         );
 
         address[] memory orderInvestors = getInvestors(_id);
@@ -291,7 +299,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
                 );
                 require(
                     ind < orderInvestors.length,
-                    "MarsBaseOtc: Wrong user in distribution"
+                    "508"
                 );
                 brInfo = usersBroker[_id];
             } else {
@@ -310,11 +318,11 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
                 );
                 require(
                     ind < usersTokensInvested.length,
-                    "MarsBaseOtc: Wrong token address in distribution"
+                    "509"
                 );
                 require(
                     usersAmountsInvested[ind] >= distribution[i].amountInvested,
-                    "MarsBaseOtc: Amount of tokens in distribution exceeded the order limits"
+                    "510"
                 );
                 usersAmountsInvested[ind] = usersAmountsInvested[ind].sub(
                     distribution[i].amountInvested
@@ -322,7 +330,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
             } else {
                 require(
                     ownerAmountsInvested[ind] >= distribution[i].amountInvested,
-                    "MarsBaseOtc: Amount of tokens in distribution exceeded the order limits"
+                    "511"
                 );
                 ownerAmountsInvested[ind] = ownerAmountsInvested[ind].sub(
                     distribution[i].amountInvested
@@ -361,13 +369,13 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         for (i = 0; i < ownerTokensInvested.length; i = i.add(1)) {
             require(
                 ownerAmountsInvested[i] == 0,
-                "MarsBaseOtc: Wrong distribution. Not all owner tokens distributed"
+                "512"
             );
         }
         for (i = 0; i < usersTokensInvested.length; i = i.add(1)) {
             require(
                 usersAmountsInvested[i] == 0,
-                "MarsBaseOtc: Wrong distribution. Not all users tokens distributed"
+                "513"
             );
         }
 
@@ -384,23 +392,23 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
     {
         require(
             orders[_id].isCancelled == false,
-            "MarsBaseOtc: Order is already cancelled"
+            "601"
         );
         require(
             orders[_id].isSwapped == false,
-            "MarsBaseOtc: Order is already swapped"
+            "602"
         );
         require(
             orders[_id].isManual == true,
-            "MarsBaseOtc: Order is not manual"
+            "603"
         );
         require(
             block.timestamp <= orders[_id].expirationDate,
-            "MarsBaseOtc: Order expired"
+            "604"
         );
         uint256 len = ordersBid[_id].length;
-        require(len > 0, "MarsBaseOtc: This order has no user bids");
-        require(orderIndex < len, "MarsBaseOtc: Wrong orderIndex");
+        require(len > 0, "605");
+        require(orderIndex < len, "606");
 
         uint256 toBroker;
         uint256 toUser;
@@ -466,10 +474,10 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         bidRead = bidArrWrite[bidIndex];
         len = bidArrWrite.length;
 
-        require(bidIndex < len, "MarsBaseOtc: Wrong bidIndex");
+        require(bidIndex < len, "701");
         require(
             bidRead.investor == sender,
-            "MarsBaseOtc: Sender is not investor of this bid"
+            "702"
         );
         vault.withdraw(
             bidRead.investedToken,
@@ -487,7 +495,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         uint256 bidIndex,
         uint256 newValue
     ) external nonReentrant onlyWhenVaultDefined onlyWhenOrderExists(_id) {
-        require(newValue > 0, "MarsBaseOtc: Wrong new value");
+        require(newValue > 0, "801");
 
         uint256 len;
         OrdersBidInfo memory bidRead;
@@ -502,12 +510,16 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         bidRead = bidArrWrite[bidIndex];
         len = bidArrWrite.length;
 
-        require(bidIndex < len, "MarsBaseOtc: Wrong bidIndex");
+        require(bidIndex < len, "802");
         require(
             bidRead.investor == sender,
-            "MarsBaseOtc: Sender is not investor of this bid"
+            "803"
         );
 
+        require(
+            bidRead.amountInvested != newValue,
+            "804"
+        );
         if (bidRead.amountInvested < newValue) {
             require(
                 IERC20(bidRead.investedToken).transferFrom(
@@ -515,7 +527,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
                     address(vault),
                     newValue.sub(bidRead.amountInvested)
                 ),
-                "MarsBaseOtc: Transfer failed"
+                "805"
             );
             bidArrWrite[bidIndex].amountInvested = newValue;
         } else if (bidRead.amountInvested > newValue) {
@@ -525,7 +537,7 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
                 bidRead.amountInvested.sub(newValue)
             );
             bidArrWrite[bidIndex].amountInvested = newValue;
-        } else revert("MarsBaseOtc: Wrong new value");
+        }
     }
 
     function contractTimestamp() external view returns (uint256) {
@@ -552,16 +564,16 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         orders[_id].amountOfToken = newAmountOfToken;
     }
 
-    function addWhiteList(address newToken) external {
+    function addWhiteList(address newToken) external onlyOwner {
         isAddressInWhiteList[newToken] = true;
     }
 
-    function deleteFromWhiteList(address tokenToDelete) external {
+    function deleteFromWhiteList(address tokenToDelete) external onlyOwner {
         isAddressInWhiteList[tokenToDelete] = false;
     }
 
     // view functions
-    function createKey(address _owner) public view returns (bytes32 result) {
+    function createKey(address _owner) external view returns (bytes32 result) {
         uint256 creationTime = block.timestamp;
         result = 0x0000000000000000000000000000000000000000000000000000000000000000;
         assembly {
@@ -605,11 +617,11 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         uint256 count = 0;
         for (uint256 i = 0; i < len; i = i.add(1)) {
             uint256 ind = _findAddress(investors, bids[i].investor, count);
+            require(ind <= count, "MarsBaseOtc: Internal error getInvestors");
             if (ind == count) {
                 investors[count] = bids[i].investor;
                 count = count.add(1);
-            } else if (ind > count)
-                revert("MarsBaseOtc: Internal error getInvestors");
+            }
         }
         uint256 delta = len.sub(count);
         if (delta > 0) {
@@ -638,11 +650,11 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         if (_from == orders[_id].owner) {
             require(
                 isAddressInWhiteList[_token] == true,
-                "MarsBaseOtc: Token is not in the white list"
+                "308"
             );
             ordersOwnerBid[_id].push(ownersBid);
         } else {
-            require(_token == orders[_id].token, "MarsBaseOtc: Wrong token");
+            require(_token == orders[_id].token, "309");
             ordersBid[_id].push(ownersBid);
         }
 
@@ -663,12 +675,12 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
             });
 
         if (_from == orders[_id].owner) {
-            require(_token == orders[_id].token, "MarsBaseOtc: Wrong token");
+            require(_token == orders[_id].token, "310");
             ordersOwnerBid[_id].push(ownersBid);
         } else {
             require(
                 isAddressInWhiteList[_token] == true,
-                "MarsBaseOtc: Token is not in the white list"
+                "311"
             );
             ordersBid[_id].push(ownersBid);
         }
@@ -681,15 +693,6 @@ contract MarsBaseOtc is Ownable, IMarsBaseOtc, ReentrancyGuard {
         onlyWhenVaultDefined
         onlyWhenOrderExists(_id)
     {
-        require(
-            orders[_id].isCancelled == false,
-            "MarsBaseOtc: Order is already cancelled"
-        );
-        require(
-            orders[_id].isSwapped == false,
-            "MarsBaseOtc: Order is already swapped"
-        );
-
         address[] memory tokens;
         uint256[] memory investments;
         (tokens, investments) = getOrderOwnerInvestments(_id);

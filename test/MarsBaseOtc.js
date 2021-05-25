@@ -286,7 +286,7 @@ contract(
                     false,
                     { from: user2 }
                 ),
-                "MarsBaseOtc: Wrong expiration date"
+                "205"
             );
 
             await MarsBaseOtcInst.createOrder(
@@ -318,7 +318,7 @@ contract(
                     false,
                     { from: user2 }
                 ),
-                "MarsBaseOtc: Order already exists"
+                "201"
             );
 
             await helper.increase(TIME_DELTA_FOR_KEY);
@@ -341,7 +341,7 @@ contract(
                     false,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Wrong amount"
+                "202"
             );
             await expectRevert(
                 MarsBaseOtcInst.createOrder(
@@ -358,7 +358,7 @@ contract(
                     false,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Wrong discount"
+                "203"
             );
         })
 
@@ -841,7 +841,7 @@ contract(
                     amount1,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Order doesn't exist"
+                "102"
             );
 
             await expectRevert(
@@ -851,7 +851,7 @@ contract(
                     amount1,
                     { from: user1, value: ONE }
                 ),
-                "MarsBaseOtc: Payable not allowed here"
+                "305"
             );
 
             await expectRevert(
@@ -861,7 +861,7 @@ contract(
                     amount1,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Allowance should be not less than amount"
+                "306"
             );
 
             await TestTokenInst_1.approve(
@@ -876,7 +876,7 @@ contract(
                     amount1,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Token is not in the white list"
+                "308"
             );
 
             await TestTokenInst_1.transfer(
@@ -896,7 +896,7 @@ contract(
                     amount1,
                     { from: user2 }
                 ),
-                "MarsBaseOtc: Wrong token"
+                "309"
             );
 
             await expectRevert(
@@ -906,7 +906,7 @@ contract(
                     ONE_ETH,
                     { from: user2, value: ONE_ETH.add(ONE) }
                 ),
-                "MarsBaseOtc: Payable value should be equals value"
+                "304"
             );
             await expectRevert(
                 MarsBaseOtcInst.orderDeposit(
@@ -915,7 +915,7 @@ contract(
                     ONE_ETH,
                     { from: user2, value: ONE_ETH.sub(ONE) }
                 ),
-                "MarsBaseOtc: Payable value should be equals value"
+                "304"
             );
 
 
@@ -953,7 +953,7 @@ contract(
                     amount1,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Wrong token"
+                "310"
             );
 
             await TestTokenInst_2.approve(
@@ -968,7 +968,7 @@ contract(
                     amount1,
                     { from: user2 }
                 ),
-                "MarsBaseOtc: Token is not in the white list"
+                "311"
             );
         })
 
@@ -1199,7 +1199,7 @@ contract(
                     [],
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Order doesn't exist"
+                "102"
             );
 
             await expectRevert(
@@ -1222,7 +1222,7 @@ contract(
                     ],
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: This order has no user bids"
+                "506"
             );
 
             await TestTokenInst_2.approve(
@@ -1242,7 +1242,7 @@ contract(
                     [],
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Wrong inputs"
+                "505"
             );
             await expectRevert(
                 MarsBaseOtcInst.makeSwap(
@@ -1256,7 +1256,7 @@ contract(
                     ],
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: This order has no owner bids"
+                "507"
             );
 
             // user1 depositing
@@ -1343,7 +1343,7 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Wrong token address in distribution"
+                "509"
             );
             distribution[0].investedToken = WhiteListTestTokenInst_1.address;
 
@@ -1354,7 +1354,7 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Amount of tokens in distribution exceeded the order limits"
+                "511"
             );
             distribution[0].amountInvested = ((new BN(distribution[0].amountInvested)).sub(ONE)).toString();
 
@@ -1365,7 +1365,7 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Wrong distribution. Not all owner tokens distributed"
+                "512"
             );
             distribution[0].amountInvested = ((new BN(distribution[0].amountInvested)).add(ONE)).toString();
 
@@ -1376,7 +1376,7 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Wrong user in distribution"
+                "508"
             );
             distribution[0].investor = user2;
 
@@ -1391,7 +1391,7 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Order is already swapped"
+                "502"
             );
 
 
@@ -1420,7 +1420,7 @@ contract(
                     [],
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Order is already cancelled"
+                "501"
             );
         })
 
@@ -1591,7 +1591,7 @@ contract(
                     key,
                     { from: user2 }
                 ),
-                "MarsBaseOtc: Caller is not admin or owner of order"
+                "403"
             );
             await MarsBaseOtcInst.cancel(
                 key,
@@ -1602,7 +1602,7 @@ contract(
                     key,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Order is already cancelled"
+                "401"
             );
 
             await helper.increase(TIME_DELTA_FOR_KEY);
@@ -1724,7 +1724,7 @@ contract(
                     key,
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Order is already swapped"
+                "402"
             );
         })
 
@@ -1754,7 +1754,7 @@ contract(
                     false,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Wrong expiration date"
+                "205"
             );
 
             // test depositing in buy orders
@@ -1815,7 +1815,7 @@ contract(
                     amount2,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Order expired"
+                "303"
             );
             // test deposit user2
             await TestTokenInst_2.approve(
@@ -1830,7 +1830,7 @@ contract(
                     amount1,
                     { from: user2 }
                 ),
-                "MarsBaseOtc: Order expired"
+                "303"
             );
 
             let distribution = [
@@ -1847,7 +1847,7 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Order expired"
+                "504"
             );
 
             await MarsBaseOtcInst.cancel(key, { from: MarsBaseOtcOwner });
@@ -2164,7 +2164,7 @@ contract(
                     [],
                     { from: MarsBaseOtcOwner }
                 ),
-                "MarsBaseOtc: Order is not automatic"
+                "503"
             );
             await MarsBaseOtcInst.cancel(key, { from: user1 });
 
@@ -2240,7 +2240,7 @@ contract(
                     ZERO,
                     { from: user1 }
                 ),
-                "MarsBaseOtc: Order is not manual"
+                "603"
             );
         })
 
@@ -2757,7 +2757,7 @@ contract(
 
             await expectRevert(
                 MarsBaseOtcInst.cancelBid(key, ONE, { from: user2 }),
-                "MarsBaseOtc: Sender is not investor of this bid"
+                "702"
             );
             await MarsBaseOtcInst.cancelBid(key, ONE, { from: user1 });
             await MarsBaseOtcInst.cancelBid(key, ONE, { from: user3 });
@@ -2984,7 +2984,7 @@ contract(
 
             await expectRevert(
                 MarsBaseOtcInst.changeBid(key, ONE, amount1, { from: user2 }),
-                "MarsBaseOtc: Sender is not investor of this bid"
+                "803"
             );
             await MarsBaseOtcInst.changeBid(key, ZERO, amount1.div(TWO), { from: user1 });
             await MarsBaseOtcInst.changeBid(key, ONE, amount2.mul(THREE), { from: user1 });
