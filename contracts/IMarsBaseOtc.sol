@@ -5,7 +5,7 @@ pragma abicoder v2;
 
 interface IMarsBaseOtc {
     enum OrderTypeInfo {error, buyType, sellType}
-
+    
     struct OrderInfo {
         address owner;
         address token;
@@ -17,11 +17,14 @@ interface IMarsBaseOtc {
         bool isManual;
         OrderTypeInfo orderType;
     }
+    
     struct OrdersBidInfo {
         address investor;
         address investedToken;
         uint256 amountInvested;
+        address from;
     }
+
     struct BrokerInfo {
         address broker;
         uint256 percents;
@@ -48,11 +51,15 @@ interface IMarsBaseOtc {
     ) external payable;
 
     function cancel(bytes32 _id) external;
-
     function makeSwap(bytes32 _id, OrdersBidInfo[] memory distribution)
         external;
 
     function makeSwapOrderOwner(bytes32 _id, uint256 orderIndex) external;
-
+    function makePartialSwapByOwner(
+        bytes32 _id,
+        uint256 orderIndex,
+        uint256[] memory _amount
+    ) external;
+    function makePartialSwap(bytes32 _id, OrdersBidInfo[] memory distribution) external;
     function cancelBid(bytes32 _id, uint256 bidIndex) external;
 }

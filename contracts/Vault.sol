@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 
 import "openzeppelin-solidity/contracts/access/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "./TransferHelper.sol";
 
 contract Vault is Ownable {
     address public marsBaseOtc;
@@ -41,10 +42,7 @@ contract Vault is Ownable {
         if (_token == address(0)) {
             payable(_receiver).transfer(_amount);
         } else {
-            require(
-                IERC20(_token).transfer(_receiver, _amount),
-                "901"
-            );
+            TransferHelper.safeTransfer(_token, _receiver, _amount);
         }
     }
 
@@ -62,16 +60,10 @@ contract Vault is Ownable {
                 payable(_receiver2).transfer(_amount2);
         } else {
             if (_receiver1 != address(0) && _amount1 > 0) {
-                require(
-                    IERC20(_token).transfer(_receiver1, _amount1),
-                    "901"
-                );
+                TransferHelper.safeTransfer(_token, _receiver1, _amount1);
             }
             if (_receiver2 != address(0) && _amount2 > 0) {
-                require(
-                    IERC20(_token).transfer(_receiver2, _amount2),
-                    "901"
-                );
+                TransferHelper.safeTransfer(_token, _receiver2, _amount2);
             }
         }
     }

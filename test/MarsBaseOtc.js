@@ -1,9 +1,12 @@
+const {
+    time,    
+} = require('@openzeppelin/test-helpers');
 const BN = require("bn.js");
 const chai = require("chai");
 const { expect, assert } = require("chai");
 const expectRevert = require("./utils/expectRevert.js");
 const helper = require("openzeppelin-test-helpers/src/time.js");
-const time = require("openzeppelin-test-helpers/src/time.js");
+//const time = require("openzeppelin-test-helpers/src/time.js");
 const assertArrays = require('chai-arrays');
 const { web3 } = require("openzeppelin-test-helpers/src/setup");
 chai.use(assertArrays);
@@ -37,7 +40,7 @@ const TIME_DELTA_FOR_KEY = new BN(60 * 60);
 
 const MarsBaseOtc = artifacts.require('MarsBaseOtc');
 const Vault = artifacts.require('Vault');
-const testToken = artifacts.require('testToken');
+const testToken = artifacts.require('testToken'); 
 
 contract(
     'MarsBaseOtc-test',
@@ -110,10 +113,10 @@ contract(
             await MarsBaseOtcInst.addWhiteList(WhiteListTestTokenInst_1.address);
             await MarsBaseOtcInst.addWhiteList(WhiteListTestTokenInst_2.address);
 
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
         })
-
+        
         it("#0 Deploy test", async () => {
             expect(await VaultInst.marsBaseOtc()).to.be.equals(MarsBaseOtcInst.address);
             expect(await VaultInst.owner()).to.be.equals(VaultOwner);
@@ -127,8 +130,8 @@ contract(
             expect(await TestTokenInst_1.symbol()).to.be.equals("Symbol 1");
             expect(await TestTokenInst_1.decimals()).to.be.bignumber.that.equals(DECIMALS);
             expect(await TestTokenInst_1.totalSupply()).to.be.bignumber.that.equals(TOTAL_SUPPLY);
-            expect(await TestTokenInst_1.balanceOf(user1)).to.be.bignumber.that.equals(TOTAL_SUPPLY);
-        })
+            expect(await TestTokenInst_1.balanceOf(user1)).to.be.bignumber.that.equals(TOTAL_SUPPLY);  
+        }) 
 
         it("#1 Test order creation", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
@@ -162,8 +165,8 @@ contract(
             expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
             expect((await MarsBaseOtcInst.orders(key)).orderType).to.be.bignumber.that.equals(ONE);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, true)).to.be.bignumber.that.equals(ZERO);
 
             await helper.increase(TIME_DELTA_FOR_KEY);
             let keyNow = await MarsBaseOtcInst.createKey(user1);
@@ -193,8 +196,8 @@ contract(
             expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
             expect((await MarsBaseOtcInst.orders(key)).orderType).to.be.bignumber.that.equals(ONE);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, true)).to.be.bignumber.that.equals(ZERO);
 
             // test creation sell orders
             await helper.increase(TIME_DELTA_FOR_KEY);
@@ -225,8 +228,8 @@ contract(
             expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
             expect((await MarsBaseOtcInst.orders(key)).orderType).to.be.bignumber.that.equals(TWO);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, true)).to.be.bignumber.that.equals(ZERO);
 
             await helper.increase(TIME_DELTA_FOR_KEY);
             keyNow = await MarsBaseOtcInst.createKey(user1);
@@ -256,10 +259,10 @@ contract(
             expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
             expect((await MarsBaseOtcInst.orders(key)).orderType).to.be.bignumber.that.equals(TWO);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght( key, true)).to.be.bignumber.that.equals(ZERO);
         })
-
+        
         it("#2 Test exceptions in creating orders", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -412,8 +415,8 @@ contract(
             expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
             expect(user1Token1AmountBefore.sub(user1Token1AmountAfter)).to.be.bignumber.that.equals(amount1);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(ONE);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(amount1);
@@ -447,8 +450,8 @@ contract(
             expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
             expect(user1Token2AmountBefore.sub(user1Token2AmountAfter)).to.be.bignumber.that.equals(amount1);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(TWO);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(TWO);
 
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
@@ -486,8 +489,8 @@ contract(
             expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.mul(TWO));
             expect(user1Token1AmountBefore.sub(user1Token1AmountAfter)).to.be.bignumber.that.equals(amount1);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(THREE);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(THREE);
 
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
@@ -527,8 +530,8 @@ contract(
             expect(new BN(await web3.eth.getBalance(VaultInst.address))).to.be.bignumber.that.equals(ONE_ETH);
             expect(user1EthAmountBefore.sub(user1EthAmountAfter)).to.be.bignumber.that.equals(ONE_ETH);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(FOUR);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(FOUR);
 
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investedToken).to.be.equals(WhiteListTestTokenInst_1.address);
@@ -567,7 +570,7 @@ contract(
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(firstDeposit);
             expect(user2Token1AmountBefore.sub(user2Token1AmountAfter)).to.be.bignumber.that.equals(firstDeposit);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(ONE);
             expect((await MarsBaseOtcInst.ordersBid(key, ZERO)).investor).to.be.equals(user2);
             expect((await MarsBaseOtcInst.ordersBid(key, ZERO)).investedToken).to.be.equals(TestTokenInst_2.address);
             expect((await MarsBaseOtcInst.ordersBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(firstDeposit);
@@ -588,7 +591,7 @@ contract(
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2);
             expect(user2Token1AmountBefore.sub(user2Token1AmountAfter)).to.be.bignumber.that.equals(amount2);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(TWO);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(TWO);
 
             expect((await MarsBaseOtcInst.ordersBid(key, ZERO)).investor).to.be.equals(user2);
             expect((await MarsBaseOtcInst.ordersBid(key, ZERO)).investedToken).to.be.equals(TestTokenInst_2.address);
@@ -688,8 +691,8 @@ contract(
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
             expect(user1Token1AmountBefore.sub(user1Token1AmountAfter)).to.be.bignumber.that.equals(amount1);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ZERO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(ZERO);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(ONE);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investedToken).to.be.equals(TestTokenInst_1.address);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).amountInvested).to.be.bignumber.that.equals(amount1);
@@ -720,8 +723,8 @@ contract(
             expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
             expect(user2Token1AmountBefore.sub(user2Token1AmountAfter)).to.be.bignumber.that.equals(amount1);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(ONE);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(ONE);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(ONE);
 
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investedToken).to.be.equals(TestTokenInst_1.address);
@@ -758,8 +761,8 @@ contract(
             expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2);
             expect(user2Token2AmountBefore.sub(user2Token2AmountAfter)).to.be.bignumber.that.equals(amount2);
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(TWO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(TWO);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(ONE);
 
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investor).to.be.equals(user1);
             expect((await MarsBaseOtcInst.ordersOwnerBid(key, ZERO)).investedToken).to.be.equals(TestTokenInst_1.address);
@@ -808,7 +811,7 @@ contract(
                 user3
             ]));
         })
-
+        
         it("#5 Test exceptions in depositing orders", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -971,7 +974,7 @@ contract(
                 "311"
             );
         })
-
+    
         it("#6 Test swap function", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -1091,45 +1094,69 @@ contract(
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: toUser2WhiteListTestToken1.toString()
+                    amountInvested: toUser2WhiteListTestToken1.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: toUser3WhiteListTestToken2.toString()
+                    amountInvested: toUser3WhiteListTestToken2.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: toUser2WhiteListTestToken2.toString()
+                    amountInvested: toUser2WhiteListTestToken2.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: toUser3WhiteListTestToken1.toString()
+                    amountInvested: toUser3WhiteListTestToken1.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user3,
                     investedToken: TestTokenInst_2.address,
-                    amountInvested: amount1.div(THREE).toString()
+                    amountInvested: amount1.div(THREE).toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user2,
                     investedToken: TestTokenInst_2.address,
-                    amountInvested: amount2.div(FOUR).toString()
+                    amountInvested: amount2.div(FOUR).toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user1,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: toUser1WhiteListTestToken1.toString()
+                    amountInvested: toUser1WhiteListTestToken1.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user1,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: toUser1WhiteListTestToken2.toString()
+                    amountInvested: toUser1WhiteListTestToken2.toString(),
+                    from: ZERO_ADDRESS
                 },
             ];
             await MarsBaseOtcInst.makeSwap(key, distribution, { from: MarsBaseOtcOwner });
+
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user1 }
+            );
+
+            await expectRevert(
+                MarsBaseOtcInst.orderDeposit(
+                    key,
+                    WhiteListTestTokenInst_1.address,
+                    amount1,
+                    { from: user1 }
+                ), 
+                "602"
+            );
 
             let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
             let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
@@ -1166,8 +1193,9 @@ contract(
             expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+        
         })
-
+       
         it("#7 Test exceptions in swapping orders", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -1217,7 +1245,8 @@ contract(
                         {
                             investor: user3,
                             investedToken: WhiteListTestTokenInst_2.address,
-                            amountInvested: amount1.toString()
+                            amountInvested: amount1.toString(),
+                            from: ZERO_ADDRESS
                         }
                     ],
                     { from: MarsBaseOtcOwner }
@@ -1242,8 +1271,9 @@ contract(
                     [],
                     { from: MarsBaseOtcOwner }
                 ),
-                "505"
+                "605"
             );
+
             await expectRevert(
                 MarsBaseOtcInst.makeSwap(
                     key,
@@ -1251,7 +1281,8 @@ contract(
                         {
                             investor: user3,
                             investedToken: WhiteListTestTokenInst_2.address,
-                            amountInvested: amount1.toString()
+                            amountInvested: amount1.toString(),
+                            from: ZERO_ADDRESS
                         }
                     ],
                     { from: MarsBaseOtcOwner }
@@ -1318,24 +1349,29 @@ contract(
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: toUser2WhiteListTestToken1.toString()
+                    amountInvested: toUser2WhiteListTestToken1.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: toUser3WhiteListTestToken2.toString()
+                    amountInvested: toUser3WhiteListTestToken2.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: toUser2WhiteListTestToken2.toString()
+                    amountInvested: toUser2WhiteListTestToken2.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: toUser3WhiteListTestToken1.toString()
+                    amountInvested: toUser3WhiteListTestToken1.toString(),
+                    from: ZERO_ADDRESS
                 },
             ];
+            
             distribution[0].investedToken = user3;
             await expectRevert(
                 MarsBaseOtcInst.makeSwap(
@@ -1367,6 +1403,7 @@ contract(
                 ),
                 "512"
             );
+
             distribution[0].amountInvested = ((new BN(distribution[0].amountInvested)).add(ONE)).toString();
 
             distribution[0].investor = user4;
@@ -1379,7 +1416,7 @@ contract(
                 "508"
             );
             distribution[0].investor = user2;
-
+            
             await MarsBaseOtcInst.makeSwap(
                 key,
                 distribution,
@@ -1391,10 +1428,10 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "502"
+                "602"
             );
 
-
+            
             await helper.increase(TIME_DELTA_FOR_KEY);
             let keyNow = await MarsBaseOtcInst.createKey(user1);
             assert(keyNow != key);
@@ -1420,10 +1457,10 @@ contract(
                     [],
                     { from: MarsBaseOtcOwner }
                 ),
-                "501"
+                "601"
             );
         })
-
+        
         it("#8 Test canceling orders", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -1696,22 +1733,26 @@ contract(
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: toUser2WhiteListTestToken1.toString()
+                    amountInvested: toUser2WhiteListTestToken1.toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: toUser3WhiteListTestToken2.toString()
+                    amountInvested: toUser3WhiteListTestToken2.toString(),
+                    from: ZERO_ADDRESS 
                 },
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: toUser2WhiteListTestToken2.toString()
+                    amountInvested: toUser2WhiteListTestToken2.toString(),
+                    from: ZERO_ADDRESS 
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: toUser3WhiteListTestToken1.toString()
+                    amountInvested: toUser3WhiteListTestToken1.toString(),
+                    from: ZERO_ADDRESS 
                 },
             ];
             await MarsBaseOtcInst.makeSwap(
@@ -1731,10 +1772,13 @@ contract(
         it("#10 Test expiration date", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
-            let amount1 = ONE_TOKEN.mul(new BN(10));
-            let amount2 = ONE_TOKEN.mul(new BN(20));
-            assert(amount1.lte(TOTAL_SUPPLY));
-            assert(amount2.lte(TOTAL_SUPPLY));
+            let amount1 = (10*10**8).toString()  
+            let amount2 =  (20*10**8).toString() 
+
+            //let amount1 = ONE_TOKEN.mul(new BN(10));
+            //let amount2 = ONE_TOKEN.mul(new BN(20));
+            //assert(amount1.lte(TOTAL_SUPPLY));
+            //assert(amount2.lte(TOTAL_SUPPLY));
 
             let block = await web3.eth.getBlock();
             let orderExpirationDateNew = new BN(block.timestamp);
@@ -1799,7 +1843,7 @@ contract(
             );
 
             await time.increaseTo(orderExpirationDate.add(TEN));
-            assert((new BN(await MarsBaseOtcInst.contractTimestamp())).gt(orderExpirationDate));
+            assert((new BN(await time.latest())).gt(orderExpirationDate));
             //expect(await MarsBaseOtcInst.contractTimestamp()).to.be.bignumber.that.equals(orderExpirationDate.add(ONE));
 
             // test deposit user1
@@ -1815,7 +1859,7 @@ contract(
                     amount2,
                     { from: user1 }
                 ),
-                "303"
+                "604"
             );
             // test deposit user2
             await TestTokenInst_2.approve(
@@ -1830,14 +1874,15 @@ contract(
                     amount1,
                     { from: user2 }
                 ),
-                "303"
+                "604"
             );
 
             let distribution = [
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: amount1
+                    amountInvested: amount1,
+                    from: ZERO_ADDRESS
                 },
 
             ];
@@ -1847,7 +1892,7 @@ contract(
                     distribution,
                     { from: MarsBaseOtcOwner }
                 ),
-                "504"
+                "604"
             );
 
             await MarsBaseOtcInst.cancel(key, { from: MarsBaseOtcOwner });
@@ -1862,7 +1907,7 @@ contract(
             assert(amount2.lte(TOTAL_SUPPLY));
 
             // test depositing in buy orders
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -1938,47 +1983,65 @@ contract(
 
             await MarsBaseOtcInst.makeSwapOrderOwner(key, ZERO, { from: user1 });
 
+            
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user1 }
+            );
+
+            await expectRevert(
+                MarsBaseOtcInst.orderDeposit(
+                    key,
+                    WhiteListTestTokenInst_1.address,
+                    amount1,
+                    { from: user1 }
+                ), 
+                "602"
+            );
+
             let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
             let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
             let user1Token1After = new BN(await TestTokenInst_1.balanceOf(user1));
             let user1Token2After = new BN(await TestTokenInst_2.balanceOf(user1));
-
-            let user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
-            let user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
-            let user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
-            let user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
-
-            let user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
-            let user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
-            let user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
-            let user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
-
+            
             expect(user1WhiteListToken1After.sub(user1WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
             expect(user1WhiteListToken2After.sub(user1WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
             expect(user1Token1After.sub(user1Token1Before)).to.be.bignumber.that.equals(ZERO);
             expect(user1Token2After.sub(user1Token2Before)).to.be.bignumber.that.equals(amount1);
 
+            let user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
+            
             expect(user2WhiteListToken1After.sub(user2WhiteListToken1Before)).to.be.bignumber.that.equals(amount2);
             expect(user2WhiteListToken2After.sub(user2WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
             expect(user2Token1After.sub(user2Token1Before)).to.be.bignumber.that.equals(ZERO);
             expect(user2Token2After.sub(user2Token2Before)).to.be.bignumber.that.equals(ZERO);
 
+            let user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
+            
             expect(user3WhiteListToken1After.sub(user3WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
             expect(user3WhiteListToken2After.sub(user3WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
             expect(user3Token1After.sub(user3Token1Before)).to.be.bignumber.that.equals(ZERO);
             expect(user3Token2After.sub(user3Token2Before)).to.be.bignumber.that.equals(amount2);
 
+        
             expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
-
+            
             await helper.increase(TIME_DELTA_FOR_KEY);
             let keyNow = await MarsBaseOtcInst.createKey(user1);
             assert(keyNow != key);
             key = keyNow;
 
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -2089,7 +2152,7 @@ contract(
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
         })
-
+        
         it("#12 Test exception in making swap of manual order", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -2099,7 +2162,7 @@ contract(
             assert(amount2.lte(TOTAL_SUPPLY));
 
             // test depositing in buy orders
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -2164,7 +2227,7 @@ contract(
                     [],
                     { from: MarsBaseOtcOwner }
                 ),
-                "503"
+                "603"
             );
             await MarsBaseOtcInst.cancel(key, { from: user1 });
 
@@ -2175,7 +2238,7 @@ contract(
             assert(keyNow != key);
             key = keyNow;
 
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -2243,7 +2306,7 @@ contract(
                 "603"
             );
         })
-
+         
         it("#13 Test brokers", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -2256,7 +2319,7 @@ contract(
             let usersBrokerPerc = new BN("200");
 
             // test depositing in buy orders
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -2360,22 +2423,26 @@ contract(
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: amount2.div(TWO).toString()
+                    amountInvested: amount2.div(TWO).toString(),
+                    from: ZERO_ADDRESS
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: amount2.sub(amount2.div(TWO)).toString()
+                    amountInvested: amount2.sub(amount2.div(TWO)).toString(),
+                    from: ZERO_ADDRESS 
                 },
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: amount1.div(TWO).toString()
+                    amountInvested: amount1.div(TWO).toString(),
+                    from: ZERO_ADDRESS 
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: amount1.sub(amount1.div(TWO)).toString()
+                    amountInvested: amount1.sub(amount1.div(TWO)).toString(),
+                    from: ZERO_ADDRESS
                 },
             ];
 
@@ -2462,7 +2529,7 @@ contract(
             let usersBrokerPerc = new BN("200");
 
             // test depositing in buy orders
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -2632,7 +2699,7 @@ contract(
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
         })
-
+        
         it("#15 Test cancel bid", async () => {
             let key = await MarsBaseOtcInst.createKey(user1);
 
@@ -2645,7 +2712,7 @@ contract(
             let usersBrokerPerc = new BN("200");
 
             // test depositing in buy orders
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -2752,8 +2819,8 @@ contract(
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount2.mul(TWO)));
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(THREE);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(TWO);
+            expect(await MarsBaseOtcInst.getLenght(key, false )).to.be.bignumber.that.equals(THREE);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(TWO);
 
             await expectRevert(
                 MarsBaseOtcInst.cancelBid(key, ONE, { from: user2 }),
@@ -2762,8 +2829,8 @@ contract(
             await MarsBaseOtcInst.cancelBid(key, ONE, { from: user1 });
             await MarsBaseOtcInst.cancelBid(key, ONE, { from: user3 });
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(TWO);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(ONE);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(TWO);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(ONE);
 
             let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
             let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
@@ -2819,7 +2886,8 @@ contract(
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: amount2.toString()
+                    amountInvested: amount2.toString(),
+                    from: ZERO_ADDRESS
                 }
             ];
             await MarsBaseOtcInst.makeSwap(key, distribution, { from: MarsBaseOtcOwner });
@@ -2872,7 +2940,7 @@ contract(
             let usersBrokerPerc = new BN("200");
 
             // test depositing in buy orders
-            orderExpirationDate = new BN(await MarsBaseOtcInst.contractTimestamp());
+            orderExpirationDate = new BN(await time.latest());
             orderExpirationDate = orderExpirationDate.add(new BN("86400"));
             await MarsBaseOtcInst.createOrder(
                 key,
@@ -2979,8 +3047,8 @@ contract(
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount2.mul(TWO)));
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(THREE);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(TWO);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(THREE);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(TWO);
 
             await expectRevert(
                 MarsBaseOtcInst.changeBid(key, ONE, amount1, { from: user2 }),
@@ -2996,8 +3064,8 @@ contract(
             );
             await MarsBaseOtcInst.changeBid(key, ZERO, amount2, { from: user2 });
 
-            expect(await MarsBaseOtcInst.ordersBidLen(key)).to.be.bignumber.that.equals(THREE);
-            expect(await MarsBaseOtcInst.ordersOwnerBidLen(key)).to.be.bignumber.that.equals(TWO);
+            expect(await MarsBaseOtcInst.getLenght(key, false)).to.be.bignumber.that.equals(THREE);
+            expect(await MarsBaseOtcInst.getLenght(key, true)).to.be.bignumber.that.equals(TWO);
 
             let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
             let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
@@ -3053,12 +3121,14 @@ contract(
                 {
                     investor: user2,
                     investedToken: WhiteListTestTokenInst_1.address,
-                    amountInvested: amount1.div(TWO).toString()
+                    amountInvested: amount1.div(TWO).toString(),
+                    from: ZERO_ADDRESS 
                 },
                 {
                     investor: user3,
                     investedToken: WhiteListTestTokenInst_2.address,
-                    amountInvested: amount2.mul(THREE).toString()
+                    amountInvested: amount2.mul(THREE).toString(),
+                    from: ZERO_ADDRESS 
                 }
             ];
             await MarsBaseOtcInst.makeSwap(key, distribution, { from: MarsBaseOtcOwner });
@@ -3097,6 +3167,998 @@ contract(
             expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
             expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+        }) 
+
+        it("#17 Test partial swap function for buy order", async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
+
+            let amount1 = ONE_TOKEN.mul(new BN(10));
+            let amount2 = ONE_TOKEN.mul(new BN(20));
+            let amount3 = ONE_TOKEN.mul(new BN(5));
+            
+            assert(amount1.lte(TOTAL_SUPPLY));
+            assert(amount2.lte(TOTAL_SUPPLY));
+            assert(amount3.lte(TOTAL_SUPPLY));
+
+            // test depositing in buy orders
+            await MarsBaseOtcInst.createOrder(
+                key,
+                TestTokenInst_2.address,
+                amount2,
+                orderExpirationDate,
+                ZERO_ADDRESS,
+                ZERO,
+                ZERO_ADDRESS,
+                ZERO,
+                ONE,
+                ONE,
+                false,
+                { from: user1 }
+            );
+
+            // user1 depositing
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount1,
+                { from: user1 }
+            );
+            await WhiteListTestTokenInst_2.transfer(
+                user1,
+                amount2,
+                { from: user2 }
+            );
+            await WhiteListTestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_2.address,
+                amount2,
+                { from: user1 }
+            );
+
+            // user2 depositing
+            await TestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_2.address,
+                amount1,
+                { from: user2 }
+            );
+
+            // user3 depositing
+            await TestTokenInst_2.transfer(
+                user3,
+                amount3,
+                { from: user2 }
+            );
+            await TestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user3 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_2.address,
+                amount3,
+                { from: user3 }
+            );
+
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount3));
+
+            // swapping
+            let user1WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1Before = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2Before = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1Before = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2Before = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1Before = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2Before = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            let WhiteListTestToken1Investments = amount1;
+            let toUser2WhiteListTestToken1 = WhiteListTestToken1Investments.div(THREE);
+            let toUser3WhiteListTestToken1 = WhiteListTestToken1Investments.sub(toUser2WhiteListTestToken1).div(TWO);
+      
+            let WhiteListTestToken2Investments = amount2;
+            let toUser2WhiteListTestToken2 = WhiteListTestToken2Investments.div(FOUR);
+            let toUser3WhiteListTestToken2 = WhiteListTestToken2Investments.sub(toUser2WhiteListTestToken2).div(THREE);
+           
+            
+            let distribution = [
+                {
+                    investor: user1,
+                    investedToken: TestTokenInst_2.address,
+                    amountInvested: amount1.toString(),
+                    from: user2
+                },
+                {
+                    investor: user2,
+                    investedToken: WhiteListTestTokenInst_1.address,
+                    amountInvested: toUser2WhiteListTestToken1.toString(),
+                    from: user1
+                },
+                {
+                    investor: user2,
+                    investedToken: WhiteListTestTokenInst_2.address,
+                    amountInvested: toUser2WhiteListTestToken2.toString(),
+                    from: user1
+                },
+                {
+                    investor: user3,
+                    investedToken: WhiteListTestTokenInst_2.address,
+                    amountInvested: toUser3WhiteListTestToken2.toString(),
+                    from: user1
+                },
+                {
+                    investor: user3,
+                    investedToken: WhiteListTestTokenInst_1.address,
+                    amountInvested: toUser3WhiteListTestToken1.toString(),
+                    from: user1
+                },
+                {
+                    investor: user1,
+                    investedToken: TestTokenInst_2.address,
+                    amountInvested: amount3.toString(),
+                    from: user3
+                },
+            ];
+            
+            await MarsBaseOtcInst.makePartialSwap(key, distribution, { from: MarsBaseOtcOwner });
+
+            let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1After = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2After = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            expect(user1WhiteListToken1After.sub(user1WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1WhiteListToken2After.sub(user1WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token1After.sub(user1Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token2After.sub(user1Token2Before)).to.be.bignumber.that.equals(amount3.add(amount1));
+
+            expect(user2WhiteListToken1After.sub(user2WhiteListToken1Before)).to.be.bignumber.that.equals(toUser2WhiteListTestToken1);
+            expect(user2WhiteListToken2After.sub(user2WhiteListToken2Before)).to.be.bignumber.that.equals(toUser2WhiteListTestToken2);
+            expect(user2Token1After.sub(user2Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2Token2After.sub(user2Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user3WhiteListToken1After.sub(user3WhiteListToken1Before)).to.be.bignumber.that.equals(toUser3WhiteListTestToken1);
+            expect(user3WhiteListToken2After.sub(user3WhiteListToken2Before)).to.be.bignumber.that.equals(toUser3WhiteListTestToken2);
+            expect(user3Token1After.sub(user3Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token2After.sub(user3Token2Before)).to.be.bignumber.that.equals(ZERO);
+                
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.sub(toUser2WhiteListTestToken1).sub(toUser3WhiteListTestToken1));
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2.sub(toUser2WhiteListTestToken2).sub(toUser3WhiteListTestToken2));
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+        
+            expect((await MarsBaseOtcInst.orders(key)).amountOfToken).to.be.bignumber.that.equals((amount2.sub(amount1)).sub(amount3));
+            expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
         })
+        
+        it('#18 test partial swap function for sell order', async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
+           
+            
+            let amount1 = ONE_TOKEN.mul(new BN(10));
+            let amount2 = ONE_TOKEN.mul(new BN(20));
+            let amount3 = ONE_TOKEN.mul(new BN(5));
+            
+            assert(amount1.lte(TOTAL_SUPPLY));
+            assert(amount2.lte(TOTAL_SUPPLY));
+            assert(amount3.lte(TOTAL_SUPPLY));
+
+            // check sell order partly swap
+            orderExpirationDate = new BN(await time.latest());
+            orderExpirationDate = orderExpirationDate.add(new BN("86400"));
+            await MarsBaseOtcInst.createOrder(
+                key,
+                TestTokenInst_1.address,
+                amount2,
+                orderExpirationDate,
+                ZERO_ADDRESS,
+                ZERO,
+                ZERO_ADDRESS,
+                ZERO,
+                ONE,
+                TWO,
+                false,
+                { from: user1 }
+            );
+
+            // user1 depositing
+            await TestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_1.address,
+                amount2,
+                { from: user1 }
+            );
+            // user2 depositing
+            await WhiteListTestTokenInst_1.transfer(user2, amount1, { from: user1 });
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount1,
+                { from: user2 }
+            );
+            await WhiteListTestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_2.address,
+                amount3,
+                { from: user2 }
+            );
+            // user3 depositing
+            await WhiteListTestTokenInst_1.transfer(user3, amount3, { from: user1 });
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user3 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount3,
+                { from: user3 }
+            );
+
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount3));
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount3);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+
+            // swapping
+            let user1WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1Before = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2Before = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1Before = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2Before = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1Before = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2Before = new BN(await TestTokenInst_2.balanceOf(user3));
+            
+            let distribution = [
+                {
+                    investor: user1,
+                    investedToken: WhiteListTestTokenInst_1.address,
+                    amountInvested: amount3.toString(),
+                    from: user3
+                },
+                {
+                    investor: user1,
+                    investedToken: WhiteListTestTokenInst_2.address,
+                    amountInvested: (amount3.div(TWO)).toString(),
+                    from: user2
+                },
+                {
+                    investor: user2,
+                    investedToken: TestTokenInst_1.address,
+                    amountInvested: (amount2.div(TWO)).toString(),
+                    from: user1
+                },
+                {
+                    investor: user3,
+                    investedToken: TestTokenInst_1.address,
+                    amountInvested: (amount2.div(FOUR)).toString(),
+                    from: user1
+                }
+            ];
+
+            await MarsBaseOtcInst.makePartialSwap(key, distribution, { from: MarsBaseOtcOwner });
+
+            let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1After = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2After = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            expect(user1WhiteListToken1After.sub(user1WhiteListToken1Before)).to.be.bignumber.that.equals(amount3);
+            expect(user1WhiteListToken2After.sub(user1WhiteListToken2Before)).to.be.bignumber.that.equals(amount3.div(TWO));
+            expect(user1Token1After.sub(user1Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token2After.sub(user1Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user2WhiteListToken1After.sub(user2WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2WhiteListToken2After.sub(user2WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2Token1After.sub(user2Token1Before)).to.be.bignumber.that.equals(amount2.div(TWO));
+            expect(user2Token2After.sub(user2Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user3WhiteListToken1After.sub(user3WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3WhiteListToken2After.sub(user3WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token1After.sub(user3Token1Before)).to.be.bignumber.that.equals(amount2.div(FOUR));
+            expect(user3Token2After.sub(user3Token2Before)).to.be.bignumber.that.equals(ZERO);
+                
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount3.sub(amount3.div(TWO)));
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2.div(FOUR));
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+        
+            expect((await MarsBaseOtcInst.orders(key)).amountOfToken).to.be.bignumber.that.equals(amount2.div(FOUR));
+            expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
+
+            let value = await MarsBaseOtcInst.getOrdersOwnerBid(key, '0')
+            expect(value['amountInvested'].toString()).to.be.equals(amount2.div(FOUR).toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '0')
+            expect(value['amountInvested'].toString()).to.be.equals(amount1.toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '1')
+            expect(value['amountInvested'].toString()).to.be.equals(amount3.sub(amount3.div(TWO)).toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '2')
+            expect(value['amountInvested'].toString()).to.be.equals(ZERO.toString())
+        })
+            
+        it("#19 Test partial swap function for one bid for buy order", async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
+           
+            let amount1 = ONE_TOKEN.mul(new BN(10));
+            let amount2 = ONE_TOKEN.mul(new BN(20));
+            let amount3 = ONE_TOKEN.mul(new BN(5));
+            
+            assert(amount1.lte(TOTAL_SUPPLY));
+            assert(amount2.lte(TOTAL_SUPPLY));
+            assert(amount3.lte(TOTAL_SUPPLY));
+
+            // test depositing in buy orders
+            await MarsBaseOtcInst.createOrder(
+                key,
+                TestTokenInst_2.address,
+                amount2,
+                orderExpirationDate,
+                ZERO_ADDRESS,
+                ZERO,
+                ZERO_ADDRESS,
+                ZERO,
+                ONE,
+                ONE,
+                false,
+                { from: user1 }
+            );
+
+            // user1 depositing
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount1,
+                { from: user1 }
+            );
+            await WhiteListTestTokenInst_2.transfer(
+                user1,
+                amount2,
+                { from: user2 }
+            );
+            await WhiteListTestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_2.address,
+                amount2,
+                { from: user1 }
+            );
+
+            // user2 depositing
+            await TestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_2.address,
+                amount1,
+                { from: user2 }
+            );
+
+            // user3 depositing
+            await TestTokenInst_2.transfer(
+                user3,
+                amount3,
+                { from: user2 }
+            );
+            await TestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user3 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_2.address,
+                amount3,
+                { from: user3 }
+            );
+
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount3));
+
+            // swapping
+            let user1WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1Before = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2Before = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1Before = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2Before = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1Before = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2Before = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            await MarsBaseOtcInst.makePartialSwapByOwner(key, '0', ['0',amount2.div(TWO)], { from: MarsBaseOtcOwner })
+           
+            let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1After = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2After = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            expect(user1WhiteListToken1After.sub(user1WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1WhiteListToken2After.sub(user1WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token1After.sub(user1Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token2After.sub(user1Token2Before)).to.be.bignumber.that.equals(amount1);
+
+            expect(user2WhiteListToken1After.sub(user2WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2WhiteListToken2After.sub(user2WhiteListToken2Before)).to.be.bignumber.that.equals(amount2.div(TWO));
+            expect(user2Token1After.sub(user2Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2Token2After.sub(user2Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user3WhiteListToken1After.sub(user3WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3WhiteListToken2After.sub(user3WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token1After.sub(user3Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token2After.sub(user3Token2Before)).to.be.bignumber.that.equals(ZERO);
+                
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2.div(TWO));
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount3);
+        
+            expect((await MarsBaseOtcInst.orders(key)).amountOfToken).to.be.bignumber.that.equals(amount1);
+            expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
+
+
+            value = await MarsBaseOtcInst.getOrdersOwnerBid(key, '0')
+            expect(value['amountInvested'].toString()).to.be.equals(amount1.toString())
+            value = await MarsBaseOtcInst.getOrdersOwnerBid(key, '1')
+            expect(value['amountInvested'].toString()).to.be.equals(amount2.div(TWO).toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '0')
+            expect(value['amountInvested'].toString()).to.be.equals(ZERO.toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '1')
+            expect(value['amountInvested'].toString()).to.be.equals(amount3.toString())
+        })    
+        
+        it("#20 Test partial swap function for one bid for sell order", async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
+           
+            let amount1 = ONE_TOKEN.mul(new BN(10));
+            let amount2 = ONE_TOKEN.mul(new BN(20));
+            let amount3 = ONE_TOKEN.mul(new BN(5));
+            
+            assert(amount1.lte(TOTAL_SUPPLY));
+            assert(amount2.lte(TOTAL_SUPPLY));
+            assert(amount3.lte(TOTAL_SUPPLY));
+
+            // check sell order partly swap
+            orderExpirationDate = new BN(await time.latest());
+            orderExpirationDate = orderExpirationDate.add(new BN("86400"));
+            await MarsBaseOtcInst.createOrder(
+                key,
+                TestTokenInst_1.address,
+                amount2,
+                orderExpirationDate,
+                ZERO_ADDRESS,
+                ZERO,
+                ZERO_ADDRESS,
+                ZERO,
+                ONE,
+                TWO,
+                false,
+                { from: user1 }
+            );
+
+            // user1 depositing
+            await TestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount2,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_1.address,
+                amount2,
+                { from: user1 }
+            );
+            // user2 depositing
+            await WhiteListTestTokenInst_1.transfer(user2, amount1, { from: user1 });
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount1,
+                { from: user2 }
+            );
+            await WhiteListTestTokenInst_2.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_2.address,
+                amount3,
+                { from: user2 }
+            );
+            // user3 depositing
+            await WhiteListTestTokenInst_1.transfer(user3, amount3, { from: user1 });
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user3 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount3,
+                { from: user3 }
+            );  
+
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount3));
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount3);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount2);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+
+            // swapping
+            let user1WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1Before = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2Before = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1Before = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2Before = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1Before = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2Before = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            await MarsBaseOtcInst.makePartialSwapByOwner(key, '1', [(amount2.div(TWO)).sub(amount3)], { from: MarsBaseOtcOwner })
+           
+            let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1After = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2After = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            expect(user1WhiteListToken1After.sub(user1WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1WhiteListToken2After.sub(user1WhiteListToken2Before)).to.be.bignumber.that.equals(amount3);
+            expect(user1Token1After.sub(user1Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token2After.sub(user1Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user2WhiteListToken1After.sub(user2WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2WhiteListToken2After.sub(user2WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2Token1After.sub(user2Token1Before)).to.be.bignumber.that.equals((amount2.div(TWO)).sub(amount3));
+            expect(user2Token2After.sub(user2Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user3WhiteListToken1After.sub(user3WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3WhiteListToken2After.sub(user3WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token1After.sub(user3Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token2After.sub(user3Token2Before)).to.be.bignumber.that.equals(ZERO);
+                
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount3));
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals((amount2.div(TWO)).add(amount3));
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+        
+            expect((await MarsBaseOtcInst.orders(key)).amountOfToken).to.be.bignumber.that.equals(amount1.add(amount3));
+            expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(false);
+
+            let value = await MarsBaseOtcInst.getOrdersOwnerBid(key, '0')
+            expect(value['amountInvested'].toString()).to.be.equals(amount1.add(amount3).toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '0')
+            expect(value['amountInvested'].toString()).to.be.equals(amount1.toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '1')
+            expect(value['amountInvested'].toString()).to.be.equals((ZERO).toString())
+            value = await MarsBaseOtcInst.getOrdersUserBid(key, '2')
+            expect(value['amountInvested'].toString()).to.be.equals(amount3.toString())
+
+        })  
+
+        it("#21 Test closing orders in partial swap function", async () => {
+            let key = await MarsBaseOtcInst.createKey(user1);
+           
+            let amount1 = ONE_TOKEN.mul(new BN(10));
+            let amount2 = ONE_TOKEN.mul(new BN(20));
+            let amount3 = ONE_TOKEN.mul(new BN(5));
+            
+            assert(amount1.lte(TOTAL_SUPPLY));
+            assert(amount2.lte(TOTAL_SUPPLY));
+            assert(amount3.lte(TOTAL_SUPPLY));
+
+            // check sell order partly swap
+            orderExpirationDate = new BN(await time.latest());
+            orderExpirationDate = orderExpirationDate.add(new BN("86400"));
+            await MarsBaseOtcInst.createOrder(
+                key,
+                TestTokenInst_1.address,
+                amount1,
+                orderExpirationDate,
+                ZERO_ADDRESS,
+                ZERO,
+                ZERO_ADDRESS,
+                ZERO,
+                ONE,
+                TWO,
+                false,
+                { from: user1 }
+            );
+
+            // user1 depositing
+            await TestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_1.address,
+                amount1,
+                { from: user1 }
+            );
+
+            // user2 depositing
+            await WhiteListTestTokenInst_1.transfer(user2, amount1, { from: user1 });
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount1,
+                { from: user2 }
+            );
+            // user3 depositing
+            await WhiteListTestTokenInst_1.transfer(user3, amount3, { from: user1 });
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user3 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount3,
+                { from: user3 }
+            );  
+
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1.add(amount3));
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+
+            // swapping
+            let user1WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1Before = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2Before = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1Before = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2Before = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1Before = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2Before = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            let distribution = [
+                {
+                    investor: user1,
+                    investedToken: WhiteListTestTokenInst_1.address,
+                    amountInvested: amount3.toString(),
+                    from: user3
+                },
+                {
+                    investor: user1,
+                    investedToken: WhiteListTestTokenInst_1.address,
+                    amountInvested: amount1.toString(),
+                    from: user2
+                },
+                {
+                    investor: user2,
+                    investedToken: TestTokenInst_1.address,
+                    amountInvested: (amount1.div(TWO)).toString(),
+                    from: user1
+                },
+                {
+                    investor: user3,
+                    investedToken: TestTokenInst_1.address,
+                    amountInvested: (amount1.div(TWO)).toString(),
+                    from: user1
+                }
+            ];
+
+            await MarsBaseOtcInst.makePartialSwap(key, distribution, { from: MarsBaseOtcOwner })
+           
+            let user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            let user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            let user1Token1After = new BN(await TestTokenInst_1.balanceOf(user1));
+            let user1Token2After = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            let user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            let user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            let user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
+            let user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            let user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            let user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            let user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
+            let user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            expect(user1WhiteListToken1After.sub(user1WhiteListToken1Before)).to.be.bignumber.that.equals(amount3.add(amount1));
+            expect(user1WhiteListToken2After.sub(user1WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token1After.sub(user1Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token2After.sub(user1Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user2WhiteListToken1After.sub(user2WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2WhiteListToken2After.sub(user2WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2Token1After.sub(user2Token1Before)).to.be.bignumber.that.equals(amount1.div(TWO));
+            expect(user2Token2After.sub(user2Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user3WhiteListToken1After.sub(user3WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3WhiteListToken2After.sub(user3WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token1After.sub(user3Token1Before)).to.be.bignumber.that.equals(amount1.div(TWO));
+            expect(user3Token2After.sub(user3Token2Before)).to.be.bignumber.that.equals(ZERO);
+                
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+           
+            expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(true);
+
+            await helper.increase(TIME_DELTA_FOR_KEY);
+            let keyNow = await MarsBaseOtcInst.createKey(user1);
+            key = keyNow;
+
+            // check buy order partly swap
+            orderExpirationDate = new BN(await time.latest());
+            orderExpirationDate = orderExpirationDate.add(new BN("86400"));
+            await MarsBaseOtcInst.createOrder(
+                key,
+                TestTokenInst_1.address,
+                amount1,
+                orderExpirationDate,
+                ZERO_ADDRESS,
+                ZERO,
+                ZERO_ADDRESS,
+                ZERO,
+                ONE,
+                ONE,
+                false,
+                { from: user1 }
+            );
+
+            // user1 depositing
+            await WhiteListTestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount1,
+                { from: user1 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                WhiteListTestTokenInst_1.address,
+                amount1,
+                { from: user1 }
+            );
+
+            // user2 depositing
+            await TestTokenInst_1.transfer(user2, amount3, { from: user1 });
+            await TestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user2 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_1.address,
+                amount3,
+                { from: user2 }
+            );
+
+            // user3 depositing
+            await TestTokenInst_1.transfer(user3, amount3, { from: user1 });
+            await TestTokenInst_1.approve(
+                MarsBaseOtcInst.address,
+                amount3,
+                { from: user3 }
+            );
+            await MarsBaseOtcInst.orderDeposit(
+                key,
+                TestTokenInst_1.address,
+                amount3,
+                { from: user3 }
+            );  
+
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(amount1);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+
+            // swapping
+            user1WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            user1WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            user1Token1Before = new BN(await TestTokenInst_1.balanceOf(user1));
+            user1Token2Before = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            user2WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            user2WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            user2Token1Before = new BN(await TestTokenInst_1.balanceOf(user2));
+            user2Token2Before = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            user3WhiteListToken1Before = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            user3WhiteListToken2Before = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            user3Token1Before = new BN(await TestTokenInst_1.balanceOf(user3));
+            user3Token2Before = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            distribution = [
+                {
+                    investor: user1,
+                    investedToken: TestTokenInst_1.address,
+                    amountInvested: amount3.toString(),
+                    from: user3
+                },
+                {
+                    investor: user1,
+                    investedToken: TestTokenInst_1.address,
+                    amountInvested: amount3.toString(),
+                    from: user2
+                },
+                {
+                    investor: user2,
+                    investedToken: WhiteListTestTokenInst_1.address,
+                    amountInvested: (amount1.div(TWO)).toString(),
+                    from: user1
+                },
+                {
+                    investor: user3,
+                    investedToken: WhiteListTestTokenInst_1.address,
+                    amountInvested: (amount1.div(TWO)).toString(),
+                    from: user1
+                }
+            ];
+
+            await MarsBaseOtcInst.makePartialSwap(key, distribution, { from: MarsBaseOtcOwner })
+
+            user1WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user1));
+            user1WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user1));
+            user1Token1After = new BN(await TestTokenInst_1.balanceOf(user1));
+            user1Token2After = new BN(await TestTokenInst_2.balanceOf(user1));
+
+            user2WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user2));
+            user2WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user2));
+            user2Token1After = new BN(await TestTokenInst_1.balanceOf(user2));
+            user2Token2After = new BN(await TestTokenInst_2.balanceOf(user2));
+
+            user3WhiteListToken1After = new BN(await WhiteListTestTokenInst_1.balanceOf(user3));
+            user3WhiteListToken2After = new BN(await WhiteListTestTokenInst_2.balanceOf(user3));
+            user3Token1After = new BN(await TestTokenInst_1.balanceOf(user3));
+            user3Token2After = new BN(await TestTokenInst_2.balanceOf(user3));
+
+            expect(user1WhiteListToken1After.sub(user1WhiteListToken1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1WhiteListToken2After.sub(user1WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user1Token1After.sub(user1Token1Before)).to.be.bignumber.that.equals(amount1);
+            expect(user1Token2After.sub(user1Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user2WhiteListToken1After.sub(user2WhiteListToken1Before)).to.be.bignumber.that.equals(amount3);
+            expect(user2WhiteListToken2After.sub(user2WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2Token1After.sub(user2Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user2Token2After.sub(user2Token2Before)).to.be.bignumber.that.equals(ZERO);
+
+            expect(user3WhiteListToken1After.sub(user3WhiteListToken1Before)).to.be.bignumber.that.equals(amount3);
+            expect(user3WhiteListToken2After.sub(user3WhiteListToken2Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token1After.sub(user3Token1Before)).to.be.bignumber.that.equals(ZERO);
+            expect(user3Token2After.sub(user3Token2Before)).to.be.bignumber.that.equals(ZERO);
+                
+            expect(await WhiteListTestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await WhiteListTestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_1.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+            expect(await TestTokenInst_2.balanceOf(VaultInst.address)).to.be.bignumber.that.equals(ZERO);
+           
+            expect((await MarsBaseOtcInst.orders(key)).isSwapped).to.be.equals(true);
+        })   
     }
 )
